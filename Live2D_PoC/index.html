@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC - PixiJS</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #333; /* Fondo oscuro para contrastar */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #canvas-container {
+            width: 800px;
+            height: 600px;
+            border: 2px solid #555;
+            background-color: transparent;
+        }
+    </style>
+    <!-- Importar PixiJS y Live2D Display (versión bundle que incluye el SDK de Cubism) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.9/dist/browser/pixi.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <script>
+        // Hacer que PIXI sea global para que pixi-live2d-display lo encuentre
+        window.PIXI = PIXI;
+
+        async function init() {
+            const live2d = window.PIXI_LIVE2D_DISPLAY || window.PIXI.live2d;
+            const container = document.getElementById('canvas-container');
+
+            // Inicializar PixiJS Application
+            const app = new PIXI.Application({
+                view: document.createElement('canvas'),
+                width: 800,
+                height: 600,
+                transparent: true,
+                autoStart: true,
+                antialias: true
+            });
+
+            container.appendChild(app.view);
+
+            try {
+                // Ruta al archivo del modelo
+                const modelUrl = '../sin 七大罪～魔王崇拜～/xch001_01/xch001_01.model3.json';
+
+                // Cargar el modelo asíncronamente
+                console.log("Cargando modelo...");
+                const model = await live2d.Live2DModel.from(modelUrl);
+
+                // Escalar y posicionar el modelo para que encaje en el canvas
+                model.scale.set(0.15);
+                model.x = app.screen.width / 2;
+                model.y = app.screen.height / 2 + 100;
+                model.anchor.set(0.5, 0.5);
+
+                app.stage.addChild(model);
+                console.log("Modelo cargado exitosamente.");
+
+                // ---------------------------------------------------------
+                // Sistema de Interacción: Seguimiento del cursor (Eye Tracking)
+                // ---------------------------------------------------------
+                app.view.addEventListener('pointermove', (e) => {
+                    // Convertir la posición del ratón a coordenadas locales del modelo
+                    // pixi-live2d-display abstrae los cálculos complejos
+                    model.focus(e.clientX, e.clientY);
+                });
+
+                // ---------------------------------------------------------
+                // Sistema de Animación: Ejecución de Motions al hacer Click
+                // ---------------------------------------------------------
+                app.view.addEventListener('click', () => {
+                    console.log("Clic detectado. Ejecutando animación aleatoria...");
+
+                    // Obtener grupos de animaciones disponibles
+                    const motionGroups = Object.keys(model.internalModel.motionManager.motionGroups);
+
+                    if(motionGroups.length > 0) {
+                        // El modelo específico suele tener el grupo "" o "idle"
+                        // Intentaremos forzar una animación táctil si está definida
+                        const groupToPlay = ""; // Basado en el model3.json del xch001_01 que usa un string vacío para el grupo
+
+                        // Seleccionamos un índice aleatorio dentro del grupo
+                        const motionsInGroup = model.internalModel.motionManager.motionGroups[groupToPlay];
+                        if (motionsInGroup && motionsInGroup.length > 0) {
+                            const randomIndex = Math.floor(Math.random() * motionsInGroup.length);
+                            model.motion(groupToPlay, randomIndex);
+                            console.log(`Reproduciendo motion: grupo '${groupToPlay}', índice ${randomIndex}`);
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error al cargar el modelo:", error);
+            }
+        }
+
+        // Iniciar la aplicación cuando el DOM esté listo
+        window.onload = init;
+    </script>
+</body>
+</html>

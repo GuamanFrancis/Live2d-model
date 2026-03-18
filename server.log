@@ -1,0 +1,13 @@
+127.0.0.1 - - [18/Mar/2026 03:52:47] "HEAD /Live2D_PoC/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Mar/2026 03:53:51] "GET /Live2D_PoC/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Mar/2026 03:54:22] "HEAD /sin%20%E4%B8%83%E5%A4%A7%E7%BD%AA%EF%BD%9E%E9%AD%94%E7%8E%8B%E5%B4%87%E6%8B%9C%EF%BD%9E/xch001_01/xch001_01.model3.json HTTP/1.1" 200 -
+127.0.0.1 - - [18/Mar/2026 03:54:41] "GET /Live2D_PoC/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Mar/2026 03:55:12] "GET /Live2D_PoC/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Mar/2026 03:55:39] "GET /Live2D_PoC/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Mar/2026 03:56:01] "GET /Live2D_PoC/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Mar/2026 03:56:24] "GET /Live2D_PoC/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Mar/2026 03:56:53] "GET /Live2D_PoC/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Mar/2026 03:56:53] "GET /sin%20%E4%B8%83%E5%A4%A7%E7%BD%AA%EF%BD%9E%E9%AD%94%E7%8E%8B%E5%B4%87%E6%8B%9C%EF%BD%9E/xch001_01/xch001_01.model3.json HTTP/1.1" 200 -
+127.0.0.1 - - [18/Mar/2026 03:56:53] "GET /sin%20%E4%B8%83%E5%A4%A7%E7%BD%AA%EF%BD%9E%E9%AD%94%E7%8E%8B%E5%B4%87%E6%8B%9C%EF%BD%9E/xch001_01/xch001_01.moc3 HTTP/1.1" 200 -
+127.0.0.1 - - [18/Mar/2026 03:56:53] "GET /sin%20%E4%B8%83%E5%A4%A7%E7%BD%AA%EF%BD%9E%E9%AD%94%E7%8E%8B%E5%B4%87%E6%8B%9C%EF%BD%9E/xch001_01/textures/texture_00.png HTTP/1.1" 200 -
+127.0.0.1 - - [18/Mar/2026 03:56:53] "GET /sin%20%E4%B8%83%E5%A4%A7%E7%BD%AA%EF%BD%9E%E9%AD%94%E7%8E%8B%E5%B4%87%E6%8B%9C%EF%BD%9E/xch001_01/textures/xch001_01_rev.png HTTP/1.1" 200 -
