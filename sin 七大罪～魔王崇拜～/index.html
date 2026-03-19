@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC - sin 七大罪～魔王崇拜～</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #2c2c2c;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            font-family: sans-serif;
+            pointer-events: none;
+            background: rgba(0,0,0,0.5);
+            padding: 15px;
+            border-radius: 8px;
+        }
+    </style>
+    <!-- Cubism Core para SDK 4.0+ -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- PixiJS -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.2/dist/browser/pixi.min.js"></script>
+    <!-- Pixi Live2D Display -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="ui-layer">
+        <h2>Live2D PoC</h2>
+        <p>Modelo: xch001_01</p>
+        <p>Interacciones:</p>
+        <ul>
+            <li>Sigue el cursor del ratón.</li>
+            <li>Haz clic en el personaje para reproducir animaciones.</li>
+        </ul>
+    </div>
+    <script>
+        const app = new PIXI.Application({
+            view: document.createElement('canvas'),
+            width: window.innerWidth,
+            height: window.innerHeight,
+            transparent: true,
+            autoStart: true,
+            resizeTo: window
+        });
+        document.body.appendChild(app.view);
+
+        const { Live2DModel } = PIXI.live2d;
+
+        async function initModel() {
+            try {
+                // Seleccionamos el modelo xch001_01 como PoC
+                const modelUrl = 'xch001_01/xch001_01.model3.json';
+
+                // Carga del modelo
+                const model = await Live2DModel.from(modelUrl);
+
+                // Configuración de escala y anclaje
+                model.scale.set(0.3); // Escala del modelo
+                model.x = app.renderer.width / 2;
+                model.y = app.renderer.height / 2 + 100;
+                model.anchor.set(0.5, 0.5);
+
+                app.stage.addChild(model);
+
+                // Tracking del cursor
+                app.view.addEventListener('pointermove', (e) => {
+                    model.focus(e.clientX, e.clientY);
+                });
+
+                // Ejecución de motions (animaciones) al hacer clic
+                model.interactive = true;
+                model.on('pointerdown', () => {
+                    // El modelo tiene motions definidos bajo un grupo vacío ""
+                    // con archivos: touch1, idle, touch2
+                    const motions = ["touch1", "idle", "touch2"];
+                    const randomMotionIndex = Math.floor(Math.random() * motions.length);
+                    model.motion('', randomMotionIndex);
+                });
+
+                // Ajustar al redimensionar la ventana
+                window.addEventListener('resize', () => {
+                    model.x = app.renderer.width / 2;
+                    model.y = app.renderer.height / 2 + 100;
+                });
+
+                console.log("Modelo Live2D cargado y listo.");
+            } catch (error) {
+                console.error("Error al cargar el modelo:", error);
+            }
+        }
+
+        initModel();
+    </script>
+</body>
+</html>
