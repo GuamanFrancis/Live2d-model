@@ -1,0 +1,25 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "个人收集的Live2d模型，一般提取自游戏中，手游居多。手游的Live2d，音频资源一般有加密，解密方法来源与网络上。",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GuamanFrancis/Live2d-model.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/GuamanFrancis/Live2d-model/issues"
+  },
+  "homepage": "https://github.com/GuamanFrancis/Live2d-model#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "playwright": "^1.58.2"
+  }
+}

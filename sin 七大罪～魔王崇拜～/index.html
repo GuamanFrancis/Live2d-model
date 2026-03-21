@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC - PixiJS + Cubism 4</title>
+
+    <!-- PixiJS (Renderizador WebGL) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js"></script>
+
+    <!-- Cubism Core SDK 4 (Lógica matemática y de físicas de Live2D) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (Solo el bundle de Cubism 4 para evitar errores de legado) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #2c3e50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #loading {
+            position: absolute;
+            color: white;
+            font-family: sans-serif;
+            font-size: 1.2rem;
+            z-index: 10;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Cargando modelo Live2D...</div>
+    <div id="canvas-container"></div>
+
+    <script>
+        // Registrar componentes de Live2D en el espacio global de PixiJS
+        const { Application } = PIXI;
+
+        async function init() {
+            // pixi-live2d-display se expone en PIXI.live2d
+            const Live2DModel = PIXI.live2d.Live2DModel;
+
+            // Desactivar logs de consola excesivos de la librería
+            if (PIXI.live2d && PIXI.live2d.config) {
+                PIXI.live2d.config.logLevel = PIXI.live2d.config.LOG_LEVEL_WARNING;
+            }
+
+            // 1. Inicializar la aplicación PixiJS
+            const app = new Application({
+                view: document.createElement('canvas'),
+                autoDensity: true,
+                resolution: window.devicePixelRatio || 1,
+                resizeTo: window,
+                backgroundAlpha: 0, // Fondo transparente
+            });
+
+            document.getElementById('canvas-container').appendChild(app.view);
+
+            // 2. Definir la ruta del modelo (SDK 4.0+)
+            const modelPath = 'xch001_01/xch001_01.model3.json';
+
+            try {
+                // 3. Carga asíncrona del modelo y de todos sus assets (moc3, texturas, motions)
+                const model = await Live2DModel.from(modelPath);
+
+                // Ocultar mensaje de carga
+                document.getElementById('loading').style.display = 'none';
+
+                // 4. Configurar el modelo y agregarlo al escenario
+                app.stage.addChild(model);
+
+                // Ajustar el anclaje al centro para facilitar el escalado y posicionamiento
+                model.anchor.set(0.5, 0.5);
+
+                // Función para adaptar el tamaño y posición del modelo al redimensionar la ventana
+                const resize = () => {
+                    const scaleX = (app.renderer.width / model.width) * 0.8;
+                    const scaleY = (app.renderer.height / model.height) * 0.8;
+                    const scale = Math.min(scaleX, scaleY);
+
+                    model.scale.set(scale);
+                    model.x = app.renderer.width / 2;
+                    model.y = app.renderer.height / 2;
+                };
+
+                resize();
+                window.addEventListener('resize', resize);
+
+                // 5. Sistema de Animación e Interacción
+
+                // Habilitar interactividad global en el escenario para capturar eventos del cursor/dedo
+                app.stage.eventMode = 'dynamic';
+                app.stage.hitArea = app.screen;
+
+                // Seguimiento de cabeza y mirada (Eye/Head Tracking)
+                app.stage.on('pointermove', (e) => {
+                    // El método model.focus() requiere las coordenadas locales relativas al modelo
+                    const position = e.data.global;
+                    model.focus(position.x, position.y);
+                });
+
+                // Disparo de animaciones (Motions) al interactuar
+                // Al hacer clic o toque, disparar una animación aleatoria del grupo por defecto ('')
+                model.eventMode = 'dynamic';
+                model.on('pointerdown', (e) => {
+                    // Dispara una animación del grupo "" (el cual tiene touch1, idle, touch2 según el JSON)
+                    // No pasamos índice para que dispare una aleatoria dentro del grupo.
+                    model.motion('');
+                });
+
+            } catch (error) {
+                console.error("Error al cargar el modelo Live2D:", error);
+                document.getElementById('loading').innerText = "Error al cargar el modelo. Verifica la consola.";
+            }
+        }
+
+        // Iniciar la aplicación
+        init();
+    </script>
+</body>
+</html>
