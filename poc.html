@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0+ PoC - sin 七大罪～魔王崇拜～</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #2c3e50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #ecf0f1;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: rgba(44, 62, 80, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            pointer-events: none;
+            z-index: 10;
+            max-width: 300px;
+        }
+        h1 {
+            font-size: 1.2rem;
+            margin: 0 0 10px 0;
+            border-bottom: 1px solid #7f8c8d;
+            padding-bottom: 5px;
+        }
+        p {
+            font-size: 0.9rem;
+            margin: 5px 0;
+        }
+    </style>
+    <!-- Cubism Core para modelos SDK 4.0+ -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- PixiJS (Versión 5 o 6 es recomendada, usamos 6) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.8/browser/pixi.min.js"></script>
+    <!-- pixi-live2d-display (Bundle exclusivo para Cubism 4) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="info">
+        <h1>Live2D Viewer PoC</h1>
+        <p id="status">Cargando dependencias y modelo...</p>
+        <p style="font-size: 0.8rem; color: #bdc3c7;">Acciones:<br>- Mueve el cursor para hacer tracking.<br>- Haz click en el personaje para una animación.</p>
+    </div>
+
+    <script>
+        // Configuración inicial del modelo
+        const MODEL_PATH = 'sin 七大罪～魔王崇拜～/xch001_01/xch001_01.model3.json';
+
+        // Inicializar la aplicación PixiJS
+        const app = new PIXI.Application({
+            view: document.createElement('canvas'),
+            width: window.innerWidth,
+            height: window.innerHeight,
+            autoStart: true,
+            backgroundAlpha: 0, // Fondo transparente para ver el color del body
+            resolution: window.devicePixelRatio || 1,
+            autoDensity: true
+        });
+        document.body.appendChild(app.view);
+
+        class Live2DController {
+            constructor(app, url) {
+                this.app = app;
+                this.url = url;
+                this.model = null;
+                this.init();
+            }
+
+            async init() {
+                try {
+                    // Carga asíncrona del modelo
+                    this.model = await PIXI.live2d.Live2DModel.from(this.url);
+
+                    // Escalar el modelo para que encaje bien en la pantalla
+                    const scaleX = (this.app.screen.width * 0.8) / this.model.width;
+                    const scaleY = (this.app.screen.height * 0.8) / this.model.height;
+                    const scale = Math.min(scaleX, scaleY);
+
+                    // Asegurar una escala sensata por defecto si el modelo es gigante
+                    this.model.scale.set(scale > 0 ? scale : 0.2);
+
+                    // Centrar anclaje y posición
+                    this.model.anchor.set(0.5, 0.5);
+                    this.model.x = this.app.screen.width / 2;
+                    this.model.y = this.app.screen.height / 2;
+
+                    // Agregar al escenario
+                    this.app.stage.addChild(this.model);
+
+                    document.getElementById('status').innerText = 'Modelo cargado exitosamente.';
+
+                    this.setupInteraction();
+                } catch (error) {
+                    console.error("Error crítico en la carga del modelo:", error);
+                    document.getElementById('status').innerText = 'Error al cargar el modelo. Revisa la consola.';
+                }
+            }
+
+            setupInteraction() {
+                if (!this.model) return;
+
+                // Habilitar interacción para el modelo
+                this.model.interactive = true;
+                this.model.buttonMode = true;
+
+                // 1. Cursor Tracking (Eye / Head)
+                this.app.view.addEventListener('pointermove', (e) => {
+                    // pixi-live2d-display maneja las matemáticas de proyección de focus automáticamente
+                    this.model.focus(e.clientX, e.clientY);
+                });
+
+                // 2. Sistema de Animación (Motions)
+                this.model.on('pointerdown', () => {
+                    const motionManager = this.model.internalModel.motionManager;
+                    const motions = motionManager.motionGroups;
+
+                    if (motions && Object.keys(motions).length > 0) {
+                        // En Live2D, los grupos de animación suelen estar bajo "" (vacío), "idle", o "tap_body"
+                        const groupName = Object.keys(motions)[0];
+                        const motionCount = motions[groupName].length;
+
+                        // Elegir una animación aleatoria del grupo principal
+                        const randomIndex = Math.floor(Math.random() * motionCount);
+
+                        // Ejecutar forzando la prioridad para interrumpir el 'idle' si lo hubiere
+                        motionManager.startMotion(groupName, randomIndex, PIXI.live2d.MotionPriority.FORCE);
+
+                        document.getElementById('status').innerText = `Reproduciendo motion: ${groupName}[${randomIndex}]`;
+                        setTimeout(() => {
+                            document.getElementById('status').innerText = 'Modelo en espera...';
+                        }, 2000);
+                    } else {
+                        document.getElementById('status').innerText = 'El modelo no contiene motions configurados.';
+                    }
+                });
+            }
+        }
+
+        // Instanciar el controlador arquitectónico
+        const controller = new Live2DController(app, MODEL_PATH);
+
+        // Responsividad: Ajustar el canvas al redimensionar la ventana
+        window.addEventListener('resize', () => {
+            app.renderer.resize(window.innerWidth, window.innerHeight);
+            if (controller.model) {
+                controller.model.x = app.screen.width / 2;
+                controller.model.y = app.screen.height / 2;
+
+                const scaleX = (app.screen.width * 0.8) / (controller.model.width / controller.model.scale.x);
+                const scaleY = (app.screen.height * 0.8) / (controller.model.height / controller.model.scale.y);
+                controller.model.scale.set(Math.min(scaleX, scaleY));
+            }
+        });
+    </script>
+</body>
+</html>
