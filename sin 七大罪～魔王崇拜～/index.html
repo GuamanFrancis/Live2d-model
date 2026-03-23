@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC - SDK 4.0+</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #2c3e50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+        }
+    </style>
+    <!-- 1. Cubism Core (Requerido para SDK 3/4) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- 2. PixiJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/5.3.12/pixi.min.js"></script>
+
+    <!-- 3. pixi-live2d-display (Bundle específico para Cubism 4) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<script>
+    // Inicializar PixiJS Application
+    const app = new PIXI.Application({
+        view: document.getElementById('canvas'),
+        autoStart: true,
+        resizeTo: window,
+        backgroundColor: 0x2c3e50
+    });
+
+    // Exponer PIXI de forma global (requerido por algunas versiones de pixi-live2d-display)
+    window.PIXI = PIXI;
+
+    async function initLive2D() {
+        try {
+            // Ruta al modelo. Nota: Las rutas relativas requieren un servidor web para evitar CORS
+            const modelUrl = 'xch001_01/xch001_01.model3.json';
+
+            // Cargar el modelo usando la clase principal del bundle cubism4
+            const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+            // Ajustar el modelo a la pantalla
+            app.stage.addChild(model);
+
+            const scaleX = (app.renderer.width / model.width) * 0.8;
+            const scaleY = (app.renderer.height / model.height) * 0.8;
+            model.scale.set(Math.min(scaleX, scaleY));
+
+            model.x = app.renderer.width / 2;
+            model.y = app.renderer.height / 2 + (model.height * model.scale.y) / 4;
+            model.anchor.set(0.5, 0.5);
+
+            // ----------------------------------------------------
+            // Sistema de Interacción
+            // ----------------------------------------------------
+
+            // 1. Seguimiento de Cursor (Eye/Head Tracking)
+            app.view.addEventListener('pointermove', (e) => {
+                // pixi-live2d-display requiere coordenadas de focus relativas de -1 a 1
+                const bounds = app.view.getBoundingClientRect();
+                const mouseX = e.clientX - bounds.left;
+                const mouseY = e.clientY - bounds.top;
+
+                // Mapear el rango [0, width] a [-1, 1]
+                const focusX = (mouseX / bounds.width) * 2 - 1;
+                const focusY = (mouseY / bounds.height) * 2 - 1;
+
+                model.focus(focusX, focusY);
+            });
+
+            // 2. Ejecución de Motions (Animaciones al hacer clic)
+            let isHit = false;
+            model.on('hit', (hitAreas) => {
+                isHit = true;
+                if (hitAreas.includes('body')) {
+                    model.motion('tap_body');
+                } else if (hitAreas.includes('head')) {
+                    model.motion('tap_head');
+                } else {
+                    // Si no hay hit areas definidas, forzamos un motion de prueba
+                    const randomTouch = Math.random() > 0.5 ? 0 : 2;
+                    model.motion('', randomTouch);
+                }
+                setTimeout(() => isHit = false, 50); // Reset
+            });
+
+            // Si el modelo no tiene configurado Hit Areas o el clic fue fuera, añadimos un fallback global
+            app.view.addEventListener('pointerdown', (e) => {
+                setTimeout(() => {
+                    if (!isHit) {
+                        const randomTouch = Math.random() > 0.5 ? 0 : 2;
+                        model.motion('', randomTouch);
+                    }
+                }, 10); // Permitir que el evento 'hit' procese primero
+            });
+
+
+            // Hacer el modelo interactivo
+            model.interactive = true;
+            model.buttonMode = true;
+
+            console.log("Modelo Live2D cargado con éxito.");
+
+        } catch (error) {
+            console.error("Error cargando el modelo Live2D:", error);
+            alert("Error cargando el modelo. Revisa la consola para más detalles. Recuerda usar un servidor HTTP local.");
+        }
+    }
+
+    // Iniciar
+    initLive2D();
+
+    // Ajuste responsivo básico
+    window.addEventListener('resize', () => {
+        app.renderer.resize(window.innerWidth, window.innerHeight);
+    });
+
+</script>
+</body>
+</html>
