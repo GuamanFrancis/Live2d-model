@@ -59,10 +59,7 @@
                 model.position.set(app.screen.width / 2, app.screen.height / 2 + 100);
 
                 // Escalar el modelo para que encaje bien en la pantalla
-                // Guardamos el tamaño original sin escalar para usarlo en el redimensionamiento
-                const originalWidth = model.internalModel.width;
-                const originalHeight = model.internalModel.height;
-                const scale = Math.min(app.screen.width / originalWidth, app.screen.height / originalHeight) * 0.9;
+                const scale = Math.min(app.screen.width / model.width, app.screen.height / model.height) * 0.9;
                 model.scale.set(scale);
 
                 // 5. Añadir al escenario
@@ -72,8 +69,7 @@
                 // 6. Gestionar Redimensionamiento
                 window.addEventListener('resize', () => {
                     model.position.set(app.screen.width / 2, app.screen.height / 2 + 100);
-                    // Usar el tamaño original para recalcular la escala y evitar distorsión u oscilaciones
-                    const newScale = Math.min(app.screen.width / originalWidth, app.screen.height / originalHeight) * 0.9;
+                    const newScale = Math.min(app.screen.width / model.width, app.screen.height / model.height) * 0.9;
                     model.scale.set(newScale);
                 });
 
