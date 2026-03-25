@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PoC Live2D - SDK 4.0+</title>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #2c3e50; }
+        #canvas-container { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        canvas { display: block; max-width: 100%; max-height: 100%; }
+        #loading { position: absolute; color: white; font-family: sans-serif; font-size: 24px; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+    </style>
+
+    <!-- PixiJS -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.x/dist/pixi.min.js"></script>
+
+    <!-- Live2D Cubism Core (Requerido para SDK 4+) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- Pixi Live2D Display (Bundle para Cubism 4) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="loading">Cargando Modelo...</div>
+    <div id="canvas-container">
+        <canvas id="live2d-canvas"></canvas>
+    </div>
+
+    <script>
+        // Registrar módulos de PIXI globalmente para que pixi-live2d-display los encuentre
+        window.PIXI = PIXI;
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const canvas = document.getElementById("live2d-canvas");
+            const loadingText = document.getElementById("loading");
+
+            // 1. Inicializar la aplicación PixiJS
+            const app = new PIXI.Application({
+                view: canvas,
+                autoStart: true,
+                resizeTo: window,
+                backgroundColor: 0x2c3e50,
+                resolution: window.devicePixelRatio || 1,
+            });
+
+            try {
+                // 2. Definir la ruta del modelo (relativa al servidor HTTP)
+                const modelUrl = "xch001_01/xch001_01.model3.json";
+
+                // 3. Cargar el modelo Live2D
+                // Live2DModel.from es asíncrono y se encarga de parsear el JSON y descargar dependencias
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl, {
+                    autoInteract: true, // Habilita seguimiento de cursor y clicks por defecto
+                    autoUpdate: true,   // Actualiza el modelo automáticamente con el ticker de Pixi
+                });
+
+                // 4. Configurar la visualización
+                model.anchor.set(0.5, 0.5);
+                model.position.set(app.screen.width / 2, app.screen.height / 2 + 100);
+
+                // Escalar el modelo para que encaje bien en la pantalla
+                // Guardamos el tamaño original sin escalar para usarlo en el redimensionamiento
+                const originalWidth = model.internalModel.width;
+                const originalHeight = model.internalModel.height;
+                const scale = Math.min(app.screen.width / originalWidth, app.screen.height / originalHeight) * 0.9;
+                model.scale.set(scale);
+
+                // 5. Añadir al escenario
+                app.stage.addChild(model);
+                loadingText.style.display = "none";
+
+                // 6. Gestionar Redimensionamiento
+                window.addEventListener('resize', () => {
+                    model.position.set(app.screen.width / 2, app.screen.height / 2 + 100);
+                    // Usar el tamaño original para recalcular la escala y evitar distorsión u oscilaciones
+                    const newScale = Math.min(app.screen.width / originalWidth, app.screen.height / originalHeight) * 0.9;
+                    model.scale.set(newScale);
+                });
+
+                // 7. Sistema de Animación Interactivo (Eventos Personalizados)
+                // Se capturan clicks/taps en el área del modelo
+                model.on('pointerdown', (hitEvent) => {
+                    console.log("Interacción detectada");
+
+                    // El modelo xch001_01 tiene motions en el grupo vacío ""
+                    // Intentamos reproducir una animación aleatoria del grupo vacío si existe
+                    const motionGroup = ""; // De acuerdo al .model3.json
+                    const motions = model.internalModel.motionManager.motionGroups[motionGroup];
+
+                    if (motions && motions.length > 0) {
+                        const randomMotionIndex = Math.floor(Math.random() * motions.length);
+                        // Forzamos la reproducción de la animación sobreescribiendo la actual
+                        model.internalModel.motionManager.startMotion(motionGroup, randomMotionIndex, 3);
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error cargando el modelo Live2D:", error);
+                loadingText.innerText = "Error al cargar el modelo. Revisa la consola.";
+                loadingText.style.color = "#e74c3c";
+            }
+        });
+    </script>
+</body>
+</html>
