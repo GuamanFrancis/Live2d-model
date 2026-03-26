@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC - SDK 4.0+</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #2c3e50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-family: sans-serif;
+            z-index: 10;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #loading {
+            position: absolute;
+            color: white;
+            font-family: sans-serif;
+            font-size: 24px;
+            z-index: 5;
+        }
+    </style>
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- PixiJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+    <!-- Pixi Live2D Display (Cubism 4 build) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+
+<div id="loading">Cargando modelo...</div>
+
+<div id="ui-container" style="display: none;">
+    <button onclick="playMotion('idle')">Idle</button>
+    <button onclick="playMotion('touch1')">Touch 1</button>
+    <button onclick="playMotion('touch2')">Touch 2</button>
+</div>
+
+<script>
+    // Expose PIXI to the global window object for pixi-live2d-display
+    window.PIXI = PIXI;
+
+    const app = new PIXI.Application({
+        view: document.createElement('canvas'),
+        autoStart: true,
+        resizeTo: window,
+        transparent: true,
+        backgroundAlpha: 0
+    });
+    document.body.appendChild(app.view);
+
+    let model;
+
+    async function init() {
+        // Path to the model3.json
+        const modelUrl = 'xch001_01/xch001_01.model3.json';
+
+        try {
+            // Cargar el modelo Live2D
+            model = await PIXI.live2d.Live2DModel.from(modelUrl);
+            app.stage.addChild(model);
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('ui-container').style.display = 'flex';
+
+            const updateScale = () => {
+                const scaleX = window.innerWidth / model.internalModel.width;
+                const scaleY = window.innerHeight / model.internalModel.height;
+                let scale = Math.min(scaleX, scaleY) * 0.9; // 90% of screen size
+
+                model.scale.set(scale);
+                model.x = (window.innerWidth - model.internalModel.width * scale) / 2;
+                model.y = (window.innerHeight - model.internalModel.height * scale) / 2;
+            };
+
+            updateScale();
+
+            // Ajuste en redimensionado
+            window.addEventListener('resize', updateScale);
+
+            // Interacción: Tracking del ratón
+            app.stage.interactive = true;
+            app.stage.hitArea = new PIXI.Rectangle(0, 0, window.innerWidth, window.innerHeight);
+            app.stage.on('pointermove', (e) => {
+                model.focus(e.data.global.x, e.data.global.y);
+            });
+
+            // Interacción: Click/Tap (Hit Testing para reproducir animaciones)
+            model.on('hit', (hitAreas) => {
+                if (hitAreas.includes('Head')) {
+                    playMotion('touch1');
+                } else if (hitAreas.includes('Body')) {
+                    playMotion('touch2');
+                }
+            });
+
+            // Clic en cualquier lado para enfocar
+            app.stage.on('pointerdown', (e) => {
+                model.tap(e.data.global.x, e.data.global.y);
+            });
+
+        } catch (error) {
+            console.error("Error cargando el modelo Live2D:", error);
+            document.getElementById('loading').innerText = "Error cargando el modelo. Revisa la consola.";
+        }
+    }
+
+    // Funciones UI para forzar animaciones
+    function playMotion(motionName) {
+        if (model) {
+            let index = 0;
+            if(motionName === 'touch1') index = 0;
+            if(motionName === 'idle') index = 1;
+            if(motionName === 'touch2') index = 2;
+
+            // El JSON define las animaciones bajo el grupo "" (vacío)
+            model.motion('', index);
+        }
+    }
+
+    init();
+</script>
+</body>
+</html>
