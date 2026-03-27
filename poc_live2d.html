@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC</title>
+    <!-- PixiJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Cubism SDK Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- Pixi Live2D Display -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // Setup PixiJS + Live2D
+        const live2d = PIXI.live2d;
+
+        const init = async () => {
+            const canvas = document.getElementById('canvas');
+
+            // Initialize PixiJS Application
+            const app = new PIXI.Application({
+                view: canvas,
+                autoStart: true,
+                resizeTo: window,
+                backgroundColor: 0x333333,
+                resolution: window.devicePixelRatio || 1,
+            });
+
+            // Load the model
+            // Correct path when served from the root
+            const modelUrl = 'sin 七大罪～魔王崇拜～/xch001_01/xch001_01.model3.json';
+
+            try {
+                // Initialize model from model3.json
+                const model = await live2d.Live2DModel.from(modelUrl);
+
+                app.stage.addChild(model);
+
+                // Resizing logic - using internalModel.width/height as per guidelines
+                const resizeModel = () => {
+                    // Calculate scaling factor based on the unscaled dimensions
+                    const scaleX = window.innerWidth / model.internalModel.width;
+                    const scaleY = window.innerHeight / model.internalModel.height;
+
+                    // Use the minimum scale to fit within the screen while maintaining aspect ratio
+                    const scale = Math.min(scaleX, scaleY) * 0.9; // 90% of screen size to leave some margin
+
+                    // Apply scale
+                    model.scale.set(scale);
+
+                    // Center the model correctly after scaling
+                    model.x = (window.innerWidth - model.internalModel.width * scale) / 2;
+                    model.y = (window.innerHeight - model.internalModel.height * scale) / 2;
+                };
+
+                window.addEventListener('resize', resizeModel);
+                resizeModel(); // Initial resize
+
+                // Interaction logic (Cursor Tracking & Pointer Tap)
+                model.interactive = true;
+
+                // 1. Motion execution on click
+                model.on('pointertap', (e) => {
+                    // Attempt to play a motion group.
+                    // "" is the default group name in this model3.json, but often it's 'TapBody' or similar.
+                    // If no group is provided, pixi-live2d-display defaults to playing random motions.
+                    model.motion('');
+                });
+
+                // 2. Cursor tracking (eye/head tracking) mapped to -1 to 1 range
+                app.view.addEventListener('pointermove', (e) => {
+                    // Map absolute cursor position (0 to window.innerWidth) to a relative coordinate (-1 to 1)
+                    // The origin (0,0) is at the center of the screen
+                    const pointX = (e.clientX / window.innerWidth) * 2 - 1;
+                    const pointY = (e.clientY / window.innerHeight) * 2 - 1;
+
+                    // Feed the mapped point to the model's focus controller
+                    model.focus(pointX, pointY);
+                });
+
+            } catch (error) {
+                console.error("Failed to load model:", error);
+            }
+        };
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
