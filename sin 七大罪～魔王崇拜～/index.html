@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC - sin 七大罪～魔王崇拜～</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #1a1a1a; }
+        canvas { display: block; }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-family: sans-serif;
+            font-size: 24px;
+            pointer-events: none;
+        }
+    </style>
+    <!-- Cubism Core para SDK 4.0+ -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- PixiJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.9/browser/pixi.min.js"></script>
+    <!-- pixi-live2d-display (Bundle específico para Cubism 4) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="loading">Cargando Modelo...</div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // Archivo del modelo a cargar (de la carpeta xch001_01)
+        const modelUrl = 'xch001_01/xch001_01.model3.json';
+
+        // Inicializar la aplicación PixiJS
+        const app = new PIXI.Application({
+            view: document.getElementById('canvas'),
+            autoStart: true,
+            resizeTo: window,
+            backgroundColor: 0x1a1a1a
+        });
+
+        async function init() {
+            try {
+                // Configurar PIXI.live2d
+                const { Live2DModel } = PIXI.live2d;
+
+                // Cargar el modelo
+                const model = await Live2DModel.from(modelUrl);
+
+                document.getElementById('loading').style.display = 'none';
+
+                // Añadir el modelo a la escena
+                app.stage.addChild(model);
+
+                // Función para ajustar el tamaño y posición del modelo
+                const resizeModel = () => {
+                    // Usar las dimensiones internas no escaladas para evitar distorsión
+                    const scaleX = window.innerWidth / model.internalModel.width;
+                    const scaleY = window.innerHeight / model.internalModel.height;
+
+                    // Ajustar la escala manteniendo la proporción
+                    const scale = Math.min(scaleX, scaleY) * 0.9; // 90% del tamaño de la pantalla
+                    model.scale.set(scale);
+
+                    // Centrar el modelo
+                    model.x = window.innerWidth / 2 - (model.internalModel.width * scale) / 2;
+                    model.y = window.innerHeight / 2 - (model.internalModel.height * scale) / 2;
+                };
+
+                // Ajuste inicial
+                resizeModel();
+
+                // Manejar redimensionamiento de ventana
+                window.addEventListener('resize', resizeModel);
+
+                // Configurar interactividad (Eye/Head Tracking)
+                // El tracking hacia el ratón está habilitado por defecto en pixi-live2d-display
+                // Pero podemos asegurarnos de que el canvas capture los eventos
+                app.stage.interactive = true;
+                app.stage.hitArea = new PIXI.Rectangle(0, 0, window.innerWidth, window.innerHeight);
+
+                // Trigger tap animations (si las hay)
+                model.on('hit', (hitAreas) => {
+                    if (hitAreas.includes('Head')) {
+                        model.expression();
+                    } else if (hitAreas.includes('Body')) {
+                        model.motion('TapBody');
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error al cargar el modelo Live2D:", error);
+                document.getElementById('loading').innerText = "Error al cargar el modelo.";
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
