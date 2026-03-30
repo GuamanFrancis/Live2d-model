@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Model Viewer - PoC</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-family: sans-serif;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 10;
+        }
+    </style>
+
+    <!-- PixiJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
+
+    <!-- Cubism Core (Necesario para SDK 4.0+) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (Bundle exclusivo para Cubism 4+) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="ui-layer">
+        <h3>Live2D PoC</h3>
+        <p>Modelo: xch001_01</p>
+        <p>Interacciones:</p>
+        <ul>
+            <li>Sigue el cursor</li>
+            <li>Haz clic en el modelo para reproducir animaciones</li>
+        </ul>
+        <p id="status-msg">Cargando modelo...</p>
+    </div>
+
+    <script>
+        // Configuración inicial de PixiJS y Live2D
+        const init = async () => {
+            const PIXI = window.PIXI;
+            const live2d = window.PIXI.live2d;
+
+            // Inicializar aplicación PixiJS
+            const app = new PIXI.Application({
+                view: document.createElement('canvas'),
+                autoStart: true,
+                resizeTo: window,
+                backgroundColor: 0x1a1a1a,
+                resolution: window.devicePixelRatio || 1,
+            });
+            document.body.appendChild(app.view);
+
+            const statusMsg = document.getElementById('status-msg');
+
+            try {
+                // Ruta al archivo del modelo
+                const modelUrl = 'xch001_01/xch001_01.model3.json';
+
+                // Cargar el modelo Live2D
+                const model = await live2d.Live2DModel.from(modelUrl);
+
+                // Añadir el modelo al stage
+                app.stage.addChild(model);
+
+                // Función para redimensionar y centrar el modelo
+                const resizeModel = () => {
+                    const canvasWidth = app.renderer.width / app.renderer.resolution;
+                    const canvasHeight = app.renderer.height / app.renderer.resolution;
+
+                    // Usar dimensiones internas sin escalar para evitar distorsiones (memoria)
+                    const unscaledWidth = model.internalModel.width;
+                    const unscaledHeight = model.internalModel.height;
+
+                    // Calcular escala para ajustar al 80% del alto de la pantalla
+                    const scale = (canvasHeight * 0.8) / unscaledHeight;
+
+                    // Aplicar escala
+                    model.scale.set(scale);
+
+                    // Centrar el modelo (usando la escala y el tamaño sin escalar)
+                    model.x = (canvasWidth - (unscaledWidth * scale)) / 2;
+                    model.y = (canvasHeight - (unscaledHeight * scale)) / 2;
+                };
+
+                // Redimensionar al inicio y cuando cambie la ventana
+                resizeModel();
+                window.addEventListener('resize', resizeModel);
+
+                // Implementar seguimiento del cursor (eye/head tracking)
+                app.stage.interactive = true;
+                app.stage.hitArea = new PIXI.Rectangle(0, 0, 10000, 10000); // Área para capturar el ratón en toda la pantalla
+
+                app.stage.on('pointermove', (e) => {
+                    model.focus(e.data.global.x, e.data.global.y);
+                });
+
+                // Implementar interacción (animaciones al hacer clic)
+                model.interactive = true;
+                model.buttonMode = true;
+
+                model.on('pointerdown', () => {
+                    // Reproducir una animación aleatoria del grupo por defecto ("")
+                    const motions = model.internalModel.motionManager.motionGroups;
+
+                    if (motions && motions[""]) {
+                        const count = motions[""].length;
+                        const index = Math.floor(Math.random() * count);
+                        model.motion("", index);
+
+                        statusMsg.innerText = `Reproduciendo animación: ${index}`;
+                        setTimeout(() => {
+                            statusMsg.innerText = "Modelo interactivo listo";
+                        }, 2000);
+                    }
+                });
+
+                // Reproducir animación "idle" si existe
+                model.motion("", 1); // en el JSON, idle.motion3.json suele ser el index 1
+
+                statusMsg.innerText = "Modelo cargado y listo";
+                statusMsg.style.color = "#4ade80"; // verde
+
+            } catch (error) {
+                console.error("Error al cargar el modelo:", error);
+                statusMsg.innerText = "Error al cargar: " + error.message;
+                statusMsg.style.color = "#f87171"; // rojo
+            }
+        };
+
+        // Iniciar cuando el DOM esté listo
+        document.addEventListener("DOMContentLoaded", init);
+    </script>
+</body>
+</html>
