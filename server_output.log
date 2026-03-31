@@ -1,0 +1,6 @@
+127.0.0.1 - - [31/Mar/2026 03:55:30] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 03:55:32] "GET /xch001_01/xch001_01.model3.json HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 03:55:33] "GET /xch001_01/xch001_01.moc3 HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 03:55:33] "GET /xch001_01/textures/texture_00.png HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 03:55:33] "GET /xch001_01/textures/xch001_01_rev.png HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 03:55:40] "GET /xch001_01/motions/touch1.motion3.json HTTP/1.1" 200 -

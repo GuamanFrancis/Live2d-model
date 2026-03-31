@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0+ PoC - sin 七大罪～魔王崇拜～</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+        }
+        #loading {
+            position: absolute;
+            color: white;
+            font-family: sans-serif;
+            font-size: 24px;
+        }
+    </style>
+    <!-- Core de Cubism SDK (Requerido para modelos 4.0+) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- PixiJS -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.10/dist/browser/pixi.min.js"></script>
+    <!-- pixi-live2d-display: Bundle específico para Cubism 4 (evita errores con Cubism 2) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="loading">Cargando modelo...</div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // Configuración de la aplicación PixiJS
+        const app = new PIXI.Application({
+            view: document.getElementById('canvas'),
+            autoStart: true,
+            resizeTo: window,
+            backgroundColor: 0x1a1a1a,
+            transparent: false
+        });
+
+        // Habilitar interacción de PixiJS
+        app.stage.interactive = true;
+
+        async function init() {
+            try {
+                // Instanciar modelo de Live2D
+                const modelUrl = 'xch001_01/xch001_01.model3.json';
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+                document.getElementById('loading').style.display = 'none';
+                app.stage.addChild(model);
+
+                // Función para ajustar el tamaño y posición
+                const resize = () => {
+                    // Usar dimensiones internas sin escalar para evitar distorsión
+                    const baseWidth = model.internalModel.width;
+                    const baseHeight = model.internalModel.height;
+
+                    const scaleX = window.innerWidth / baseWidth;
+                    const scaleY = window.innerHeight / baseHeight;
+
+                    // Mantener la relación de aspecto
+                    const scale = Math.min(scaleX, scaleY) * 0.9; // 90% del tamaño de la pantalla
+
+                    model.scale.set(scale);
+
+                    // Centrar el modelo
+                    model.x = (window.innerWidth - baseWidth * scale) / 2;
+                    model.y = (window.innerHeight - baseHeight * scale) / 2 + (baseHeight * scale * 0.1);
+                };
+
+                // Llamar al resize inicial y registrar el evento
+                resize();
+                window.addEventListener('resize', resize);
+
+                // Interacción: Seguimiento del cursor (Eye/Head tracking)
+                app.view.addEventListener('pointermove', (event) => {
+                    model.focus(event.clientX, event.clientY);
+                });
+
+                // Interacción: Ejecutar animación al hacer clic
+                app.view.addEventListener('pointerdown', (event) => {
+                    // model.focus(event.clientX, event.clientY);
+
+                    // Buscar grupos de animaciones ("motions") o "tap_body" si existe
+                    // Usualmente los modelos tienen "idle", "tap_body", etc.
+                    // Ejecutamos una animación aleatoria para demostrar la interacción
+                    const motionGroups = Object.keys(model.internalModel.motionManager.motionGroups);
+
+                    if (motionGroups.length > 0) {
+                        // Excluir 'idle' para asegurar que se note el cambio
+                        let interactiveGroups = motionGroups.filter(g => g.toLowerCase() !== 'idle');
+                        let targetGroup = interactiveGroups.length > 0 ? interactiveGroups[0] : motionGroups[0];
+
+                        // En este modelo específico, si existe un grupo en particular, priorizarlo
+                        if (motionGroups.includes('tap_body')) targetGroup = 'tap_body';
+                        else if (motionGroups.includes('Tap')) targetGroup = 'Tap';
+
+                        model.motion(targetGroup);
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error al cargar el modelo:", error);
+                document.getElementById('loading').innerText = "Error al cargar el modelo.";
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
