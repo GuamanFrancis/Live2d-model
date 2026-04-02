@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Architecture PoC - SDK 4.0+</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #2b2b2b;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 300px;
+            background: rgba(30, 30, 30, 0.85);
+            color: #ececec;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+            z-index: 10;
+        }
+        h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            border-bottom: 1px solid #555;
+            padding-bottom: 10px;
+            color: #4da6ff;
+        }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        button {
+            background-color: #4da6ff;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            margin: 4px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.85rem;
+        }
+        button:hover {
+            background-color: #3388dd;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 1.5rem;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Cargando Motor y Assets...</div>
+
+    <div id="ui-panel" style="display: none;">
+        <h2>Panel de Control Live2D</h2>
+
+        <div class="control-group">
+            <label>Animaciones (Motions)</label>
+            <div id="motion-buttons"></div>
+        </div>
+
+        <div class="control-group">
+            <label>Interacción</label>
+            <p style="font-size: 0.8rem; color: #888; margin: 0;">- El modelo sigue el cursor automáticamente.<br>- Puedes arrastrar el modelo con el ratón.</p>
+        </div>
+    </div>
+
+    <!-- 1. Cubism Core (Requisito para SDK 4.0+) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- 2. PixiJS (Framework de renderizado) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.8/dist/browser/pixi.min.js"></script>
+
+    <!-- 3. pixi-live2d-display (Capa de integración, usando bundle cubism4) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js"></script>
+
+    <script>
+        // Configuración inicial de la arquitectura
+        const APP_CONFIG = {
+            modelUrl: 'xch001_01/xch001_01.model3.json',
+            scaleFactor: 0.85, // Escala relativa al viewport
+            bgHex: 0x2b2b2b
+        };
+
+        class Live2DApp {
+            constructor() {
+                this.app = null;
+                this.model = null;
+                this.isDragging = false;
+            }
+
+            async init() {
+                // Inicializar Pixi Application
+                this.app = new PIXI.Application({
+                    view: document.createElement('canvas'),
+                    autoStart: true,
+                    resizeTo: window,
+                    backgroundColor: APP_CONFIG.bgHex,
+                    resolution: window.devicePixelRatio || 1,
+                    autoDensity: true
+                });
+                document.body.appendChild(this.app.view);
+
+                try {
+                    await this.loadModel();
+                    this.setupInteractions();
+                    this.setupUI();
+
+                    // Escuchar resize de ventana
+                    window.addEventListener('resize', () => this.resizeModel());
+
+                    // Ocultar loading, mostrar UI
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('ui-panel').style.display = 'block';
+                } catch (error) {
+                    document.getElementById('loading').innerText = 'Error al cargar el modelo: ' + error.message;
+                    console.error("Live2D Load Error:", error);
+                }
+            }
+
+            async loadModel() {
+                // Carga asíncrona del modelo mediante la fábrica
+                this.model = await PIXI.live2d.Live2DModel.from(APP_CONFIG.modelUrl);
+                this.app.stage.addChild(this.model);
+                this.resizeModel();
+            }
+
+            resizeModel() {
+                if (!this.model || !this.model.internalModel) return;
+
+                // Cálculo de escala basado en dimensiones internas para prevenir distorsión en resize
+                const internalWidth = this.model.internalModel.width;
+                const internalHeight = this.model.internalModel.height;
+
+                const scaleX = window.innerWidth / internalWidth;
+                const scaleY = window.innerHeight / internalHeight;
+                const scale = Math.min(scaleX, scaleY) * APP_CONFIG.scaleFactor;
+
+                this.model.scale.set(scale);
+
+                // Centrado dinámico
+                this.model.x = (window.innerWidth - (internalWidth * scale)) / 2;
+                this.model.y = (window.innerHeight - (internalHeight * scale)) / 2;
+            }
+
+            setupInteractions() {
+                this.model.interactive = true;
+                this.model.buttonMode = true;
+
+                // Draggable logic
+                this.model.on('pointerdown', () => this.isDragging = true);
+                this.model.on('pointerup', () => this.isDragging = false);
+                this.model.on('pointerupoutside', () => this.isDragging = false);
+
+                this.model.on('pointermove', (e) => {
+                    if (this.isDragging) {
+                        this.model.position.x += e.data.movementX;
+                        this.model.position.y += e.data.movementY;
+                    }
+                });
+
+                // Hit testing para expresiones (Opcional según SDK config)
+                this.model.on('hit', (hitAreas) => {
+                    if (hitAreas.includes('Head') || hitAreas.includes('head')) {
+                        this.model.expression();
+                    }
+                });
+            }
+
+            setupUI() {
+                const buttonsContainer = document.getElementById('motion-buttons');
+                const motionGroups = this.model.internalModel.motionManager?.motionGroups || {};
+                const groups = Object.keys(motionGroups);
+
+                if (groups.length === 0) {
+                    buttonsContainer.innerHTML = '<span style="color:#aaa;">No se encontraron animaciones</span>';
+                    return;
+                }
+
+                groups.forEach(group => {
+                    const btn = document.createElement('button');
+                    const label = group ? group.charAt(0).toUpperCase() + group.slice(1) : 'Default';
+                    btn.innerText = label;
+                    btn.onclick = () => {
+                        // Disparar animación por grupo
+                        this.model.motion(group);
+                    };
+                    buttonsContainer.appendChild(btn);
+                });
+            }
+        }
+
+        // Bootstrapping
+        document.addEventListener('DOMContentLoaded', () => {
+            const app = new Live2DApp();
+            app.init();
+        });
+    </script>
+</body>
+</html>
