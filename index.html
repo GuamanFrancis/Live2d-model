@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0+ PoC - Arquitectura de Referencia</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #2c3e50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+        }
+        #loading {
+            position: absolute;
+            color: white;
+            font-family: sans-serif;
+            font-size: 24px;
+            pointer-events: none;
+        }
+    </style>
+
+    <!-- PixiJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
+
+    <!-- Cubism Core SDK (requerido para Live2D SDK 4.0+) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (Bundle específico para Cubism 4) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+
+</head>
+<body>
+    <div id="loading">Cargando Modelo Live2D...</div>
+    <div id="canvas-container">
+        <canvas id="live2d-canvas"></canvas>
+    </div>
+
+    <script>
+        // Configuración inicial del Arquitecto
+        const MODEL_PATH = encodeURI('sin 七大罪～魔王崇拜～/xch001_01/xch001_01.model3.json');
+
+        async function init() {
+            try {
+                // 1. Inicializar la Aplicación PixiJS
+                const app = new PIXI.Application({
+                    view: document.getElementById('live2d-canvas'),
+                    resizeTo: document.getElementById('canvas-container'),
+                    transparent: true,
+                    autoDensity: true,
+                    resolution: window.devicePixelRatio || 1,
+                });
+
+                // 2. Cargar el Modelo Live2D
+                // Utilizamos el namespace global expuesto por pixi-live2d-display
+                const { Live2DModel } = PIXI.live2d;
+                const model = await Live2DModel.from(MODEL_PATH);
+
+                document.getElementById('loading').style.display = 'none';
+
+                // 3. Añadir el modelo a la escena
+                app.stage.addChild(model);
+
+                // 4. Lógica de redimensionado responsivo para evitar distorsión
+                function resizeModel() {
+                    const canvasWidth = app.renderer.width / app.renderer.resolution;
+                    const canvasHeight = app.renderer.height / app.renderer.resolution;
+
+                    // Utilizar internalModel.width/height como base real no escalada
+                    const modelWidth = model.internalModel.width;
+                    const modelHeight = model.internalModel.height;
+
+                    // Escalar para que encaje conservando el aspect ratio
+                    const scaleX = canvasWidth / modelWidth;
+                    const scaleY = canvasHeight / modelHeight;
+                    const scale = Math.min(scaleX, scaleY) * 0.9; // 90% del tamaño máximo
+
+                    model.scale.set(scale);
+
+                    // Centrar modelo
+                    model.x = (canvasWidth - modelWidth * scale) / 2;
+                    model.y = (canvasHeight - modelHeight * scale) / 2;
+                }
+
+                // Ajustar tamaño inicial y suscribirse a cambios de ventana
+                resizeModel();
+                window.addEventListener('resize', resizeModel);
+
+                // 5. Sistema de Animación e Interacción
+
+                // Activar tracking del cursor (Eye/Head tracking)
+                model.tracking = true;
+
+                // Escuchar eventos interactivos directamente en el modelo
+                model.on('hit', (hitAreas) => {
+                    console.log('Hit areas clickeadas:', hitAreas);
+
+                    // Lógica para reproducir animación si se toca la cabeza u otra área
+                    if (hitAreas.includes('Head')) {
+                        // En Live2D, los triggers de animación se pueden invocar así (si están definidos)
+                        model.motion('TapHead');
+                    } else if (hitAreas.includes('Body')) {
+                        model.motion('TapBody');
+                    } else {
+                        // Reproduce una animación aleatoria del grupo principal si existe
+                        model.motion('');
+                    }
+                });
+
+                // Alternativa de interacción: trigger de animación general al clickear cualquier parte
+                model.on('pointertap', () => {
+                     console.log('Interacción general disparada');
+                     // Reproduce una animación del grupo default o vacío ("")
+                     // El modelo examinado tiene un array vacío "" con "touch1", "idle", "touch2"
+                     // La librería maneja el string vacío para reproducir aleatorios del grupo
+                     try {
+                         model.motion('');
+                     } catch(e) {
+                         console.warn("Error al reproducir animación: ", e);
+                     }
+                });
+
+            } catch (error) {
+                console.error("Error crítico en la inicialización del modelo:", error);
+                document.getElementById('loading').innerText = "Error cargando el modelo.";
+            }
+        }
+
+        // Bootstrapping
+        init();
+    </script>
+</body>
+</html>
