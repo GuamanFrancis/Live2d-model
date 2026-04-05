@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Model PoC</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- PixiJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/5.3.12/pixi.min.js"></script>
+    <!-- pixi-live2d-display (cubism4 for SDK 4.0+) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+
+        // Initialize PixiJS application
+        const app = new PIXI.Application({
+            view: canvas,
+            autoStart: true,
+            resizeTo: window,
+            backgroundColor: 0x333333,
+            resolution: window.devicePixelRatio || 1,
+        });
+
+        // Model URI (encoding path properly for spaces and special characters)
+        const modelPath = 'sin 七大罪～魔王崇拜～/xch001_01/xch001_01.model3.json';
+        const encodedModelPath = encodeURI(modelPath);
+
+        let model;
+
+        async function initLive2D() {
+            try {
+                // Load the Live2D model
+                model = await PIXI.live2d.Live2DModel.from(encodedModelPath);
+
+                // Add the model to the stage
+                app.stage.addChild(model);
+
+                // Initial positioning and scaling
+                resizeModel();
+
+                // Enable tracking and interaction
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // Handle eye/head tracking
+                app.stage.interactive = true;
+                app.stage.on('pointermove', (event) => {
+                    model.focus(event.data.global.x, event.data.global.y);
+                });
+
+                // Handle click for motions
+                model.on('pointertap', () => {
+                    // Play a random motion from any available group
+                    model.motion('');
+                });
+
+                // Listen for window resize to adjust the model
+                window.addEventListener('resize', resizeModel);
+
+                console.log('Model loaded successfully!');
+
+            } catch (error) {
+                console.error('Error loading Live2D model:', error);
+            }
+        }
+
+        function resizeModel() {
+            if (!model) return;
+
+            // Use the unscaled internal dimensions for correct scale calculation
+            const scaleX = window.innerWidth / model.internalModel.width;
+            const scaleY = window.innerHeight / model.internalModel.height;
+
+            // Fit within window, maintaining aspect ratio
+            const scale = Math.min(scaleX, scaleY) * 0.9; // 90% of screen
+
+            model.scale.set(scale);
+
+            // Center the model
+            model.x = window.innerWidth / 2 - (model.internalModel.width * scale) / 2;
+            model.y = window.innerHeight / 2 - (model.internalModel.height * scale) / 2;
+        }
+
+        // Start initialization
+        initLive2D();
+    </script>
+</body>
+</html>
