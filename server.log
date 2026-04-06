@@ -1,0 +1,17 @@
+127.0.0.1 - - [06/Apr/2026 04:19:46] "HEAD /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [06/Apr/2026 04:20:59] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [06/Apr/2026 04:20:59] "GET /app.js HTTP/1.1" 200 -
+127.0.0.1 - - [06/Apr/2026 04:21:00] "GET /sin%20%E4%B8%83%E5%A4%A7%E7%BD%AA%EF%BD%9E%E9%AD%94%E7%8E%8B%E5%B4%87%E6%8B%9C%EF%BD%9E/xch001_01/xch001_01.model3.json HTTP/1.1" 200 -
+127.0.0.1 - - [06/Apr/2026 04:21:00] "GET /sin%20%E4%B8%83%E5%A4%A7%E7%BD%AA%EF%BD%9E%E9%AD%94%E7%8E%8B%E5%B4%87%E6%8B%9C%EF%BD%9E/xch001_01/xch001_01.moc3 HTTP/1.1" 200 -
+127.0.0.1 - - [06/Apr/2026 04:21:00] "GET /sin%20%E4%B8%83%E5%A4%A7%E7%BD%AA%EF%BD%9E%E9%AD%94%E7%8E%8B%E5%B4%87%E6%8B%9C%EF%BD%9E/xch001_01/textures/texture_00.png HTTP/1.1" 200 -
+127.0.0.1 - - [06/Apr/2026 04:21:00] "GET /sin%20%E4%B8%83%E5%A4%A7%E7%BD%AA%EF%BD%9E%E9%AD%94%E7%8E%8B%E5%B4%87%E6%8B%9C%EF%BD%9E/xch001_01/textures/xch001_01_rev.png HTTP/1.1" 200 -
+127.0.0.1 - - [06/Apr/2026 04:21:02] code 404, message File not found
+127.0.0.1 - - [06/Apr/2026 04:21:02] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [06/Apr/2026 04:22:08] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [06/Apr/2026 04:22:08] "GET /app.js HTTP/1.1" 200 -
+127.0.0.1 - - [06/Apr/2026 04:22:08] "GET /sin%20%E4%B8%83%E5%A4%A7%E7%BD%AA%EF%BD%9E%E9%AD%94%E7%8E%8B%E5%B4%87%E6%8B%9C%EF%BD%9E/xch001_01/xch001_01.model3.json HTTP/1.1" 200 -
+127.0.0.1 - - [06/Apr/2026 04:22:08] "GET /sin%20%E4%B8%83%E5%A4%A7%E7%BD%AA%EF%BD%9E%E9%AD%94%E7%8E%8B%E5%B4%87%E6%8B%9C%EF%BD%9E/xch001_01/xch001_01.moc3 HTTP/1.1" 200 -
+127.0.0.1 - - [06/Apr/2026 04:22:08] "GET /sin%20%E4%B8%83%E5%A4%A7%E7%BD%AA%EF%BD%9E%E9%AD%94%E7%8E%8B%E5%B4%87%E6%8B%9C%EF%BD%9E/xch001_01/textures/xch001_01_rev.png HTTP/1.1" 200 -
+127.0.0.1 - - [06/Apr/2026 04:22:08] "GET /sin%20%E4%B8%83%E5%A4%A7%E7%BD%AA%EF%BD%9E%E9%AD%94%E7%8E%8B%E5%B4%87%E6%8B%9C%EF%BD%9E/xch001_01/textures/texture_00.png HTTP/1.1" 200 -
+127.0.0.1 - - [06/Apr/2026 04:22:09] code 404, message File not found
+127.0.0.1 - - [06/Apr/2026 04:22:09] "GET /favicon.ico HTTP/1.1" 404 -
