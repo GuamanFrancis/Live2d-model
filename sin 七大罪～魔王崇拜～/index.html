@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Model Viewer - PoC</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333333;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+    <!-- PixiJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (Cubism 4 bundle) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="live2d-canvas"></canvas>
+    </div>
+
+    <script>
+        // Ensure PIXI and Live2D model plugin are ready
+        const { Live2DModel } = PIXI.live2d;
+
+        async function init() {
+            // Create PixiJS application
+            const canvas = document.getElementById('live2d-canvas');
+            const app = new PIXI.Application({
+                view: canvas,
+                resizeTo: window,
+                transparent: true,
+                autoDensity: true,
+                resolution: window.devicePixelRatio || 1,
+            });
+
+            // The model path. Ensure proper encoding if there are special characters.
+            // "sin 七大罪～魔王崇拜～/xch001_01/xch001_01.model3.json"
+            // Wait, we will run the server FROM the "sin 七大罪～魔王崇拜～" directory.
+            // So the path to the model is just "xch001_01/xch001_01.model3.json"
+            const modelPath = encodeURI("xch001_01/xch001_01.model3.json");
+
+            try {
+                // Load the model
+                const model = await Live2DModel.from(modelPath);
+
+                // Add model to stage
+                app.stage.addChild(model);
+
+                // Resize logic based on internal dimensions to avoid distortion
+                const resizeModel = () => {
+                    const scaleX = app.renderer.width / model.internalModel.width;
+                    const scaleY = app.renderer.height / model.internalModel.height;
+
+                    // Fit the model to the screen while maintaining aspect ratio
+                    const scale = Math.min(scaleX, scaleY) * 0.9; // 90% of screen height/width
+
+                    model.scale.set(scale);
+
+                    // Center the model
+                    model.x = app.renderer.width / 2;
+                    model.y = app.renderer.height / 2 + (model.internalModel.height * scale) / 2;
+
+                    // The anchor is not fully supported in standard PIXI way for Live2DModel without setting internal positions,
+                    // but we can adjust position assuming it's drawn from top-left or bottom-center.
+                    // Usually Live2D models center at x=0, y=0. Let's position it simply:
+                    model.x = app.renderer.width / 2 - (model.internalModel.width * scale) / 2;
+                    model.y = app.renderer.height / 2 - (model.internalModel.height * scale) / 2;
+                };
+
+                // Initial resize
+                resizeModel();
+
+                // Handle window resize
+                window.addEventListener('resize', resizeModel);
+
+                // Mouse/Touch tracking for head and eye movement
+                app.stage.interactive = true;
+
+                app.stage.on('pointermove', (e) => {
+                    model.focus(e.data.global.x, e.data.global.y);
+                });
+
+                // Tap/Click to play random motion
+                model.on('pointerdown', () => {
+                    // This triggers a tap event on the model, playing default tap animations if defined
+                    // Or we could explicitly call a motion
+                    model.motion('Tap', 0, PIXI.live2d.MotionPriority.FORCE);
+                });
+
+                console.log("Model loaded successfully.");
+
+            } catch (error) {
+                console.error("Error loading model:", error);
+            }
+        }
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
