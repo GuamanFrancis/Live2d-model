@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0 PoC</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #333;
+        }
+        canvas {
+            display: block;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-family: sans-serif;
+            font-size: 24px;
+            pointer-events: none;
+        }
+    </style>
+    <!-- Cubism Core for Live2D SDK 4.0+ -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- PixiJS 6.5.10 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+    <!-- pixi-live2d-display (Cubism 4 bundle) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="loading">Cargando Modelo Live2D...</div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // Configurar el sistema de Live2D
+        const live2d = PIXI.live2d;
+
+        // Inicializar la aplicación Pixi
+        const app = new PIXI.Application({
+            view: document.getElementById('canvas'),
+            autoStart: true,
+            resizeTo: window,
+            backgroundColor: 0x333333,
+            resolution: window.devicePixelRatio || 1,
+            autoDensity: true,
+        });
+
+        // Habilitar interacción de puntero en toda la pantalla
+        app.stage.interactive = true;
+
+        async function initModel() {
+            try {
+                // El path contiene caracteres asiáticos y espacios, se debe encodear
+                const modelUrl = encodeURI('./xch001_01/xch001_01.model3.json');
+
+                // Cargar el modelo
+                const model = await live2d.Live2DModel.from(modelUrl);
+
+                // Remover el mensaje de carga
+                document.getElementById('loading').style.display = 'none';
+
+                // Añadir el modelo a la escena
+                app.stage.addChild(model);
+
+                // Función de redimensionamiento
+                const resizeModel = () => {
+                    if (!model.internalModel) return;
+
+                    // Escalar el modelo basándose en la altura de la ventana
+                    const scaleY = app.renderer.height / model.internalModel.height;
+                    const scaleX = app.renderer.width / model.internalModel.width;
+
+                    // Usar la escala más restrictiva para que se vea completo o un tamaño razonable
+                    // Usaremos un porcentaje de la altura de pantalla
+                    const scale = (app.renderer.height * 0.9) / model.internalModel.height;
+
+                    model.scale.set(scale);
+
+                    // Centrar horizontalmente y alinear abajo
+                    model.x = (app.renderer.width - model.internalModel.width * scale) / 2;
+                    model.y = app.renderer.height - model.internalModel.height * scale;
+                };
+
+                // Llamar una vez y al redimensionar
+                resizeModel();
+                window.addEventListener('resize', resizeModel);
+
+                // Interacción y físicas
+                // Habilitar el seguimiento de puntero para cabeza y ojos (mouse tracking)
+                app.view.addEventListener('pointermove', (e) => {
+                    model.focus(e.clientX, e.clientY);
+                });
+
+                // Tapping / Click para animaciones
+                model.on('pointertap', (e) => {
+                    model.focus(e.data.global.x, e.data.global.y);
+                    // Disparar una animación aleatoria
+                    const motionGroups = Object.keys(model.internalModel.motionManager.definitions);
+                    if (motionGroups.length > 0) {
+                        const randomGroup = motionGroups[Math.floor(Math.random() * motionGroups.length)];
+                        model.motion(randomGroup);
+                    }
+                });
+
+                // Reproducir animación inicial si está disponible
+                model.motion('idle'); // Generalmente es 'idle' o string vacio
+
+            } catch (error) {
+                console.error("Error al cargar el modelo:", error);
+                document.getElementById('loading').innerText = "Error al cargar el modelo. Verifica la consola.";
+            }
+        }
+
+        // Iniciar
+        initModel();
+    </script>
+</body>
+</html>
