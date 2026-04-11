@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Web Render PoC</title>
+    <style>
+        body { margin: 0; padding: 0; background-color: #333; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        canvas { display: block; background-color: #444; border: 1px solid #666; }
+        #controls { position: absolute; top: 10px; left: 10px; color: white; font-family: sans-serif; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; }
+    </style>
+    <!-- Core Dependencies -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.10/dist/browser/pixi.min.js"></script>
+    <!-- live2d display library for SDK 4.0 -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="controls">
+        <h3>Live2D PoC</h3>
+        <p>Modelo: xch001_01</p>
+        <p>Interacción: Mueve el cursor / Haz clic para animación</p>
+    </div>
+    <script>
+        (async function main() {
+            // Setup PIXI Application
+            const app = new PIXI.Application({
+                view: document.createElement('canvas'),
+                width: 800,
+                height: 600,
+                autoStart: true,
+                backgroundColor: 0x333333
+            });
+            document.body.appendChild(app.view);
+
+            // Import PIXI Live2D Display module
+            const { Live2DModel } = PIXI.live2d;
+
+            try {
+                // Ensure the path is encoded to handle spaces
+                const modelPath = encodeURI('xch001_01/xch001_01.model3.json');
+                const model = await Live2DModel.from(modelPath);
+
+                app.stage.addChild(model);
+
+                // Escalar el modelo basándose en las dimensiones internas
+                const scaleX = app.renderer.width / model.internalModel.width;
+                const scaleY = app.renderer.height / model.internalModel.height;
+                const scale = Math.min(scaleX, scaleY) * 0.9;
+
+                model.scale.set(scale);
+
+                // Centrar el modelo
+                model.x = (app.renderer.width - model.internalModel.width * scale) / 2;
+                model.y = (app.renderer.height - model.internalModel.height * scale) / 2 + (model.internalModel.height * scale * 0.1);
+
+                // Tracking de ratón (Head/Eye tracking)
+                app.view.addEventListener('mousemove', (e) => {
+                    // Normalize position to -1 to 1 based on canvas size
+                    const rect = app.view.getBoundingClientRect();
+                    const x = (e.clientX - rect.left) / rect.width;
+                    const y = (e.clientY - rect.top) / rect.height;
+
+                    // Foco del modelo
+                    model.focus((x - 0.5) * 2, (y - 0.5) * 2);
+                });
+
+                // Reproducir animación al hacer clic
+                app.view.addEventListener('click', () => {
+                    // The model has motion groups. Usually 'tap_body' or empty string "" is used in this model's JSON
+                    // If no motion is played randomly, force a specific group
+                    model.motion("");
+                });
+
+                console.log("Model loaded successfully!");
+            } catch (err) {
+                console.error("Error loading model:", err);
+            }
+        })();
+    </script>
+</body>
+</html>
