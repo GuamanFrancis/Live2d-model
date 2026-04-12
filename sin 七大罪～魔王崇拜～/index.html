@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0+ PoC</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: sans-serif;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>Live2D PoC</h3>
+        <p>Mueve el ratón para tracking.</p>
+        <p>Haz clic en el modelo para reproducir una animación aleatoria.</p>
+    </div>
+
+    <!-- PixiJS v6 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (cubism4 version) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+
+    <script>
+        // Setup PixiJS Application
+        const app = new PIXI.Application({
+            view: document.createElement('canvas'),
+            autoStart: true,
+            resizeTo: window,
+            backgroundColor: 0x333333
+        });
+        document.body.appendChild(app.view);
+
+        // Expose PIXI to the global window object for pixi-live2d-display
+        window.PIXI = PIXI;
+
+        async function init() {
+            try {
+                // Determine the model file to load
+                // We use encodeURI to handle spaces in directory paths
+                const modelUrl = encodeURI('./xch001_01/xch001_01.model3.json');
+
+                // Load the Live2D model
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+                // Add the model to the stage
+                app.stage.addChild(model);
+
+                // Setup scaling and positioning
+                // Use internalModel width/height for accurate initial sizing
+                const scaleX = innerWidth / model.internalModel.width;
+                const scaleY = innerHeight / model.internalModel.height;
+
+                // Fit model comfortably on screen, but maintain aspect ratio
+                model.scale.set(Math.min(scaleX, scaleY) * 0.8);
+
+                model.x = innerWidth / 2;
+                model.y = innerHeight / 2;
+
+                // Set anchor to center for easier positioning and scaling
+                model.anchor.set(0.5, 0.5);
+
+                // Implement Interaction
+                // 1. Mouse tracking
+                model.on('pointermove', (event) => {
+                    model.focus(event.data.global.x, event.data.global.y);
+                });
+
+                // 2. Click to play motion
+                model.on('pointertap', () => {
+                    // Start a random motion from the default group
+                    // By default, usually "Idle" or "TapBody" exist
+                    // Pixi-live2d-display handles motion priorities automatically
+                    model.motion('');
+                    console.log("Motion triggered by click.");
+                });
+
+                // Enable interaction on the model
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    model.x = innerWidth / 2;
+                    model.y = innerHeight / 2;
+
+                    const newScaleX = innerWidth / model.internalModel.width;
+                    const newScaleY = innerHeight / model.internalModel.height;
+                    model.scale.set(Math.min(newScaleX, newScaleY) * 0.8);
+                });
+
+                console.log("Model loaded successfully.");
+
+            } catch (error) {
+                console.error("Failed to load Live2D model:", error);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
