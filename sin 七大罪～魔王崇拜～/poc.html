@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC - sin 七大罪</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: sans-serif;
+            color: white;
+        }
+        #canvas-container {
+            position: relative;
+        }
+        #canvas {
+            display: block;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+            pointer-events: none;
+        }
+    </style>
+    <!-- PixiJS 6.5.10 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (cubism4 bundle) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="canvas"></canvas>
+        <div id="controls">
+            <h3>Live2D PoC</h3>
+            <p>- Mueve el ratón para Eye/Head Tracking.</p>
+            <p>- Haz clic en el modelo para disparar animaciones de toque.</p>
+            <p id="status">Cargando modelo...</p>
+        </div>
+    </div>
+
+    <script>
+        (async function() {
+            try {
+                // Setup Pixi Application
+                const app = new PIXI.Application({
+                    view: document.getElementById('canvas'),
+                    autoStart: true,
+                    resizeTo: window,
+                    backgroundColor: 0x333333,
+                    resolution: window.devicePixelRatio || 1
+                });
+
+                const statusEl = document.getElementById('status');
+
+                // Path to the model3.json file
+                // Using encodeURI in case there are special characters in paths, though xch001_01 seems safe
+                const modelUrl = "xch001_01/xch001_01.model3.json";
+
+                // Load the Live2D model using pixi-live2d-display
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+                app.stage.addChild(model);
+
+                // Resize and position logic
+                const resize = () => {
+                    const scaleX = window.innerWidth / model.internalModel.width;
+                    const scaleY = window.innerHeight / model.internalModel.height;
+
+                    // Fit to screen while maintaining aspect ratio
+                    const scale = Math.min(scaleX, scaleY) * 0.9;
+                    model.scale.set(scale);
+
+                    model.x = (window.innerWidth - model.internalModel.width * scale) / 2;
+                    model.y = (window.innerHeight - model.internalModel.height * scale) / 2;
+                };
+
+                // Initial resize and bind to window resize
+                resize();
+                window.addEventListener('resize', resize);
+
+                statusEl.textContent = "Modelo cargado con éxito.";
+
+                // Interaction: Eye/Head Tracking
+                // We listen on the app.stage to focus on pointer
+                app.stage.interactive = true;
+                app.stage.hitArea = new PIXI.Rectangle(0, 0, 10000, 10000);
+
+                app.stage.on('pointermove', (event) => {
+                    model.focus(event.data.global.x, event.data.global.y);
+                });
+
+                // Interaction: Trigger Motions on click
+                // The motion file defines motions under specific groups (usually "" or "tap_body" etc)
+                // In xch001_01.model3.json, motions are under "" (empty string)
+                model.on('pointertap', () => {
+                    // Start a random motion from the default group ""
+                    model.motion("");
+                    statusEl.textContent = "Reproduciendo animación...";
+                    setTimeout(() => {
+                        statusEl.textContent = "Modelo interactivo.";
+                    }, 2000);
+                });
+
+            } catch (err) {
+                console.error("Error loading Live2D model:", err);
+                document.getElementById('status').textContent = "Error al cargar modelo. Ver consola.";
+            }
+        })();
+    </script>
+</body>
+</html>
