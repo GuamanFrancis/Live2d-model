@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Live2D PoC - SDK 4.0+</title>
+    <style>
+        body { margin: 0; padding: 0; background-color: #333; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+    <!-- Core library for Cubism 4 -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- PixiJS (6.x version) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+    <!-- pixi-live2d-display (cubism4 specific bundle) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <script>
+        (async function() {
+            // Inicializar PixiJS Application
+            const app = new PIXI.Application({
+                view: document.createElement('canvas'),
+                autoStart: true,
+                resizeTo: window,
+                backgroundColor: 0x333333
+            });
+            document.body.appendChild(app.view);
+
+            // Cargar el modelo Live2D
+            const modelUrl = encodeURI("xch001_01/xch001_01.model3.json");
+
+            try {
+                // Instanciar modelo
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+                app.stage.addChild(model);
+
+                // Ajustar posición y escala usando dimensiones internas
+                const scaleX = window.innerWidth / model.internalModel.width;
+                const scaleY = window.innerHeight / model.internalModel.height;
+                model.scale.set(Math.min(scaleX, scaleY) * 0.9);
+
+                // Centrar
+                model.x = (window.innerWidth - model.internalModel.width * model.scale.x) / 2;
+                model.y = (window.innerHeight - model.internalModel.height * model.scale.y) / 2;
+
+                // Tracking de ratón (eye/head tracking)
+                app.view.addEventListener('pointermove', (event) => {
+                    model.focus(event.clientX, event.clientY);
+                });
+
+                // Evento de clic para ejecutar motions (animaciones)
+                app.view.addEventListener('pointerdown', (event) => {
+                    // El modelo tiene motions en el grupo ""
+                    model.motion("");
+                });
+
+                // Manejo de resize para recalcular escala si la ventana cambia
+                window.addEventListener('resize', () => {
+                    const sx = window.innerWidth / model.internalModel.width;
+                    const sy = window.innerHeight / model.internalModel.height;
+                    model.scale.set(Math.min(sx, sy) * 0.9);
+                    model.x = (window.innerWidth - model.internalModel.width * model.scale.x) / 2;
+                    model.y = (window.innerHeight - model.internalModel.height * model.scale.y) / 2;
+                });
+
+            } catch (error) {
+                console.error("Error al cargar el modelo:", error);
+            }
+        })();
+    </script>
+</body>
+</html>
