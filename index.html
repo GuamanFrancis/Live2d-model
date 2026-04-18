@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D WebGL PoC - PixiJS + pixi-live2d-display</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #2b2b2b;
+            color: #fff;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+            pointer-events: none;
+        }
+    </style>
+
+    <!-- 1. PixiJS (v6.x for headless compatibility / stable WebGL) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- 2. Cubism Core (Required for SDK 3.0/4.0) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- 3. Cubism Framework bundle (v4) -->
+    <script src="https://cdn.jsdelivr.net/gh/dylanNew/live2d/webgl/Live2D/lib/live2d.min.js"></script>
+
+    <!-- 4. pixi-live2d-display (using the cubism4 bundle for SDK 4.0+) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+
+</head>
+<body>
+    <div id="ui-layer">
+        <h2>Live2D PoC (SDK 4.0+)</h2>
+        <p>Modelo: xch001_01</p>
+        <p>- Mueve el ratón para Tracking<br>- Haz click en el personaje para lanzar una animación (Motion)</p>
+    </div>
+
+    <div id="canvas-container">
+        <!-- PixiJS Canvas will be appended here -->
+    </div>
+
+    <script>
+        // Use the global PIXI and PIXI.live2d
+        const { Application } = PIXI;
+        const { Live2DModel } = PIXI.live2d;
+
+        // Path to the model3.json file
+        // Model paths must be properly URI encoded, especially if they contain spaces or special characters
+        const modelPath = encodeURI("sin 七大罪～魔王崇拜～/xch001_01/xch001_01.model3.json");
+
+        async function init() {
+            // Create PixiJS Application
+            const app = new Application({
+                view: document.createElement('canvas'),
+                resizeTo: window,
+                autoDensity: true,
+                resolution: window.devicePixelRatio || 1,
+                transparent: true,
+                backgroundAlpha: 0 // completely transparent
+            });
+            document.getElementById('canvas-container').appendChild(app.view);
+
+            try {
+                // Load the model asynchronously
+                const model = await Live2DModel.from(modelPath);
+
+                // Add model to the stage
+                app.stage.addChild(model);
+
+                // Setup scaling and positioning
+                function resize() {
+                    // Use internalModel unscaled dimensions for calculation
+                    const scaleX = innerWidth / model.internalModel.width;
+                    const scaleY = innerHeight / model.internalModel.height;
+
+                    // Fit to screen while maintaining aspect ratio, max scale 1.0 to prevent pixelation
+                    model.scale.set(Math.min(scaleX, scaleY, 1.0));
+
+                    // Center the model
+                    model.x = innerWidth / 2 - (model.internalModel.width * model.scale.x) / 2;
+                    model.y = innerHeight / 2 - (model.internalModel.height * model.scale.y) / 2;
+                }
+
+                // Initial resize and listen for window resizing
+                resize();
+                window.addEventListener('resize', resize);
+
+                // Setup Interaction: Tracking (Eye/Head)
+                app.view.addEventListener('pointermove', (event) => {
+                    if (model.internalModel && model.internalModel.focusController) {
+                        // Calculate normalized pointer position (-1 to 1 relative to center)
+                        const rect = app.view.getBoundingClientRect();
+                        const x = event.clientX - rect.left;
+                        const y = event.clientY - rect.top;
+
+                        // Convert to -1 to 1 based on canvas size
+                        const nx = (x / rect.width) * 2 - 1;
+                        const ny = (y / rect.height) * 2 - 1;
+
+                        model.internalModel.focusController.focus(nx, ny);
+                    }
+                });
+
+                // Setup Interaction: Motions (Animations on Click)
+                model.on('pointerdown', () => {
+                    // Trigger a random motion. Group name is empty string if not grouped
+                    // If your model has named groups like "TapBody", use model.motion("TapBody")
+                    model.motion('', undefined, 3); // Play random motion from default group, priority 3
+                });
+
+                // Make model interactive for pointer events in Pixi
+                model.interactive = true;
+
+                console.log("Live2D Model initialized successfully");
+            } catch (error) {
+                console.error("Error loading Live2D model:", error);
+            }
+        }
+
+        // Start initialization
+        init();
+    </script>
+</body>
+</html>
