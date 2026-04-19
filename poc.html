@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Model PoC - SDK 4.0+</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+    <!-- PixiJS v6.5.10 (Preferido para compatibilidad WebGL headless) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Cubism Core para SDK 4.0+ -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (cubism4 bundle) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <script>
+        // Setup PixiJS App
+        const app = new PIXI.Application({
+            view: document.createElement('canvas'),
+            autoStart: true,
+            resizeTo: window,
+            backgroundColor: 0x333333
+        });
+        document.body.appendChild(app.view);
+
+        // Path to the model, encoding URI for special/asian characters and spaces
+        const modelPath = encodeURI("sin 七大罪～魔王崇拜～/xch001_01/xch001_01.model3.json");
+
+        async function init() {
+            try {
+                console.log("Loading model from: " + modelPath);
+                // Load the Live2D model
+                const model = await PIXI.live2d.Live2DModel.from(modelPath);
+
+                app.stage.addChild(model);
+
+                // Resize and position based on internal model dimensions
+                function resize() {
+                    // Use unscaled dimensions: model.internalModel.width and height
+                    const scaleX = window.innerWidth / model.internalModel.width;
+                    const scaleY = window.innerHeight / model.internalModel.height;
+
+                    // Maintain aspect ratio, fit inside window
+                    const scale = Math.min(scaleX, scaleY) * 0.9;
+
+                    model.scale.set(scale);
+
+                    // Center the model
+                    model.x = (window.innerWidth - model.internalModel.width * scale) / 2;
+                    model.y = (window.innerHeight - model.internalModel.height * scale) / 2;
+                }
+
+                window.addEventListener('resize', resize);
+                resize(); // Initial resize
+
+                // Eye / Head tracking
+                app.view.addEventListener('pointermove', (event) => {
+                    // Normalize coordinates between -1 and 1
+                    const x = (event.clientX / window.innerWidth) * 2 - 1;
+                    const y = (event.clientY / window.innerHeight) * 2 - 1;
+
+                    // Use internal focusController
+                    if (model.internalModel && model.internalModel.focusController) {
+                        model.internalModel.focusController.focus(x, y);
+                    }
+                });
+
+                // Tap for motion
+                app.view.addEventListener('pointerdown', () => {
+                    // Trigger a motion on click
+                    // Motion group '' (empty string) as per json, random index 0-2
+                    const motionCount = 3;
+                    const randomMotion = Math.floor(Math.random() * motionCount);
+                    model.motion('', randomMotion);
+                    console.log("Triggered motion index: " + randomMotion);
+                });
+
+                console.log("Model loaded successfully.");
+
+            } catch (error) {
+                console.error("Error loading model:", error);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
