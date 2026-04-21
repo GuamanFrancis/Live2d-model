@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0+ PoC</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #333; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        canvas { display: block; border: 1px solid #555; }
+    </style>
+    <!-- Dependencias Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        // Inicializar la aplicación PixiJS
+        const app = new PIXI.Application({
+            view: document.getElementById('canvas'),
+            autoStart: true,
+            backgroundAlpha: 0,
+            width: window.innerWidth,
+            height: window.innerHeight
+        });
+
+        // Configurar pixi-live2d-display
+        const { Live2DModel } = PIXI.live2d;
+
+        async function init() {
+            try {
+                // El path contiene caracteres especiales, requiere encodeURI
+                const modelPath = encodeURI("sin 七大罪～魔王崇拜～/xch001_01/xch001_01.model3.json");
+                console.log("Cargando modelo desde:", modelPath);
+
+                // Cargar el modelo
+                const model = await Live2DModel.from(modelPath);
+
+                // Añadir el modelo a la escena
+                app.stage.addChild(model);
+
+                // Escalar el modelo basándose en sus dimensiones internas para evitar distorsiones
+                const scaleX = innerWidth / model.internalModel.width;
+                const scaleY = innerHeight / model.internalModel.height;
+                model.scale.set(Math.min(scaleX, scaleY) * 0.8);
+
+                // Centrar
+                model.x = (innerWidth - model.internalModel.width * model.scale.x) / 2;
+                model.y = (innerHeight - model.internalModel.height * model.scale.y) / 2;
+
+                // Implementación de interacciones: Seguimiento de cursor (Eye/Head tracking)
+                app.view.addEventListener('pointermove', (e) => {
+                    // Mapear coordenadas de la pantalla (0 a width/height) al rango esperado por FocusController (-1 a 1)
+                    const x = (e.clientX / window.innerWidth) * 2 - 1;
+                    const y = (e.clientY / window.innerHeight) * 2 - 1;
+                    model.internalModel.focusController.focus(x, y);
+                });
+
+                // Implementación de interacciones: Reproducir animaciones al hacer clic
+                app.view.addEventListener('pointerdown', () => {
+                    // Dispara una animación aleatoria del grupo vacío "" que tiene las motions
+                    console.log("Clic detectado, intentando reproducir motion...");
+                    // Los motions están en el grupo "" según el json xch001_01.model3.json
+                    const motionIndex = Math.floor(Math.random() * 3); // touch1, idle, touch2
+                    model.motion('', motionIndex);
+                });
+
+                // Resize handler
+                window.addEventListener('resize', () => {
+                    app.renderer.resize(window.innerWidth, window.innerHeight);
+                    const newScaleX = window.innerWidth / model.internalModel.width;
+                    const newScaleY = window.innerHeight / model.internalModel.height;
+                    model.scale.set(Math.min(newScaleX, newScaleY) * 0.8);
+                    model.x = (window.innerWidth - model.internalModel.width * model.scale.x) / 2;
+                    model.y = (window.innerHeight - model.internalModel.height * model.scale.y) / 2;
+                });
+
+                console.log("Modelo cargado exitosamente.");
+            } catch (error) {
+                console.error("Error al cargar el modelo:", error);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
