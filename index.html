@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Web Viewer - PoC</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #222;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+
+    <!-- PixiJS (v6.5.10 recomendado para compatibilidad y estabilidad en entornos WebGL restringidos) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Cubism Core para SDK 4.0+ -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (Bundle para Cubism 4) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container">
+        <canvas id="live2d-canvas"></canvas>
+    </div>
+
+    <script>
+        // Configuración inicial como Arquitecto de Software:
+        // Exponemos PIXI globalmente ya que pixi-live2d-display lo requiere en el entorno del navegador
+        window.PIXI = PIXI;
+
+        // Función principal de inicialización asíncrona
+        async function initLive2D() {
+            try {
+                const canvas = document.getElementById('live2d-canvas');
+
+                // 1. Inicialización de la aplicación PixiJS
+                // Se recomienda un fondo transparente o color sólido, resolution = devicePixelRatio para nitidez
+                const app = new PIXI.Application({
+                    view: canvas,
+                    autoStart: true,
+                    resizeTo: window,
+                    backgroundColor: 0x333333,
+                    resolution: window.devicePixelRatio || 1,
+                    autoDensity: true
+                });
+
+                // 2. Carga del Modelo
+                // Usamos encodeURI para manejar correctamente espacios y caracteres especiales en la ruta
+                // La ruta debe ser relativa al servidor local (ej: python -m http.server)
+                const modelUrl = encodeURI('sin 七大罪～魔王崇拜～/xch001_01/xch001_01.model3.json');
+
+                // Live2DModel.from carga asincronamente el moc3, físicas, expresiones y texturas
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+                // 3. Ajuste de Escala y Posicionamiento Responsive
+                // Práctica recomendada: usar dimensiones internas del modelo (unscaled) para calcular la escala
+                function resizeModel() {
+                    const scaleX = app.renderer.width / model.internalModel.width;
+                    const scaleY = app.renderer.height / model.internalModel.height;
+
+                    // Elegimos la escala mínima para asegurar que el modelo se vea completo
+                    // o podemos aplicar un factor fijo para enfocar el busto
+                    const scale = Math.min(scaleX, scaleY) * 0.8; // 80% de la pantalla para dar margen
+
+                    model.scale.set(scale);
+
+                    // Centrar el modelo en la pantalla
+                    model.x = app.renderer.width / 2;
+                    model.y = app.renderer.height / 2 + (model.internalModel.height * scale) * 0.2; // Ligeramente más abajo
+
+                    // Ancla en el centro inferior para que escale correctamente desde la base
+                    model.anchor.set(0.5, 0.5);
+                }
+
+                // Aplicar tamaño inicial
+                resizeModel();
+
+                // Escuchar eventos de redimensión del navegador
+                window.addEventListener('resize', resizeModel);
+
+                // Añadir el modelo a la escena
+                app.stage.addChild(model);
+
+                // 4. Sistema de Interacción y Animación
+
+                // Eye / Head Tracking (Seguimiento del cursor)
+                app.view.addEventListener('pointermove', (event) => {
+                    // Convertir las coordenadas de pantalla (-1 a 1) para el focus controller
+                    const x = (event.clientX / window.innerWidth) * 2 - 1;
+                    const y = (event.clientY / window.innerHeight) * 2 - 1;
+
+                    // Usar la API interna recomendada para el focus
+                    if (model.internalModel && model.internalModel.focusController) {
+                        model.internalModel.focusController.focus(x, -y); // Invertir Y dependiendo del setup
+                    }
+                });
+
+                // Ejecución de "Motions" (Animaciones) al hacer clic
+                app.view.addEventListener('pointerdown', (event) => {
+                    // Si no hay grupos específicos definidos ('TapBody', etc),
+                    // pasar un string vacío ejecutará una animación aleatoria
+                    // index es opcional, si no se pasa se elige aleatoriamente del grupo
+                    model.motion('', undefined, 3); // 3 es la prioridad (ej. FORCE)
+                    console.log('Motion triggered on click');
+                });
+
+                console.log('Live2D Model loaded successfully');
+
+            } catch (error) {
+                console.error('Error al inicializar el modelo Live2D:', error);
+            }
+        }
+
+        // Iniciar cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', initLive2D);
+    </script>
+</body>
+</html>
