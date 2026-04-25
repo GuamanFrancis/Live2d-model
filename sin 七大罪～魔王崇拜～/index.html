@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0+ PoC - sin 七大罪</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+    <!-- PixiJS v6.5.10 (Recomendado para Headless WebGL/SwiftShader y pixi-live2d-display) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (Versión para SDK 4.0+) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <script>
+        /**
+         * Manager modular para controlar el ciclo de vida del modelo Live2D
+         */
+        class Live2DManager {
+            constructor(containerId) {
+                this.container = document.getElementById(containerId);
+                this.app = null;
+                this.model = null;
+                this.initApp();
+            }
+
+            initApp() {
+                // Inicializar aplicación PixiJS
+                this.app = new PIXI.Application({
+                    view: document.createElement('canvas'),
+                    resizeTo: window,
+                    transparent: true,
+                    autoStart: true,
+                    antialias: true
+                });
+                this.container.appendChild(this.app.view);
+
+                // Manejar el redimensionamiento dinámico
+                window.addEventListener('resize', () => this.resizeModel());
+            }
+
+            async loadModel(modelPath) {
+                try {
+                    console.log('Cargando modelo desde:', modelPath);
+                    // Cargar el modelo utilizando el factory method
+                    this.model = await PIXI.live2d.Live2DModel.from(modelPath);
+
+                    this.app.stage.addChild(this.model);
+
+                    // Ajustar tamaño inicial
+                    this.resizeModel();
+
+                    // Configurar interacciones
+                    this.setupInteractions();
+
+                    console.log('Modelo cargado correctamente.');
+                } catch (error) {
+                    console.error('Error al cargar el modelo Live2D:', error);
+                }
+            }
+
+            resizeModel() {
+                if (!this.model) return;
+
+                // Utilizar las dimensiones no escaladas para evitar distorsiones
+                const unscaledWidth = this.model.internalModel.width;
+                const unscaledHeight = this.model.internalModel.height;
+
+                // Calcular la escala para que se ajuste a la pantalla (por ejemplo, al 80% de la altura)
+                const targetHeight = window.innerHeight * 0.8;
+                const scale = targetHeight / unscaledHeight;
+
+                this.model.scale.set(scale);
+
+                // Centrar el modelo en la pantalla
+                this.model.x = (window.innerWidth - unscaledWidth * scale) / 2;
+                this.model.y = (window.innerHeight - unscaledHeight * scale) / 2 + (window.innerHeight * 0.1);
+            }
+
+            setupInteractions() {
+                if (!this.model) return;
+
+                // Habilitar interacción para el modelo
+                this.model.interactive = true;
+                this.model.buttonMode = true;
+
+                // Eye/Head Tracking está habilitado por defecto en pixi-live2d-display
+                // Simplemente reacciona a los movimientos del ratón en el canvas
+
+                // Reproducir animación al hacer clic/tocar
+                this.model.on('pointerdown', (e) => {
+                    console.log('Interacción: tap detectado');
+                    // Ejecutar una animación (motion). Dejamos el grupo vacío para buscar cualquier animación.
+                    // Si el modelo tiene grupos específicos (ej. 'tap_body'), se podría especificar.
+                    this.model.motion('', 0);
+                });
+            }
+        }
+
+        // Inicializar cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', () => {
+            const manager = new Live2DManager('canvas-container');
+
+            // Asegurarnos de codificar la URI por si hay espacios o caracteres especiales en las carpetas
+            const modelUrl = encodeURI('./ych001_01/ych001_01.model3.json');
+            manager.loadModel(modelUrl);
+        });
+    </script>
+</body>
+</html>
