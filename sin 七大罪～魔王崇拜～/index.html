@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0+ PoC</title>
+    <!-- PixiJS -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.10/dist/browser/pixi.min.js"></script>
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- pixi-live2d-display (Cubism 4 support only) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; background-color: #333; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        canvas { display: block; }
+        #controls { position: absolute; top: 10px; left: 10px; color: white; font-family: sans-serif; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; z-index: 10; }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <h3>Live2D PoC</h3>
+        <p>Modelo: xch001_01</p>
+        <p>Interacción: Sigue el cursor. Haz clic para reproducir animaciones.</p>
+    </div>
+    <canvas id="canvas"></canvas>
+    <script>
+        (async function() {
+            // Inicialización de la aplicación PixiJS
+            const app = new PIXI.Application({
+                view: document.getElementById('canvas'),
+                autoStart: true,
+                resizeTo: window,
+                backgroundColor: 0x333333
+            });
+
+            const { Live2DModel } = PIXI.live2d;
+
+            try {
+                // Cargar el modelo
+                const modelUrl = encodeURI('./xch001_01/xch001_01.model3.json');
+                const model = await Live2DModel.from(modelUrl);
+
+                app.stage.addChild(model);
+
+                // Calcular escala para ajustar a la pantalla manteniendo proporciones
+                const scaleX = innerWidth / model.internalModel.width;
+                const scaleY = innerHeight / model.internalModel.height;
+
+                model.scale.set(Math.min(scaleX, scaleY) * 0.8);
+
+                model.x = (innerWidth - model.internalModel.width * model.scale.x) / 2;
+                model.y = (innerHeight - model.internalModel.height * model.scale.y) / 2;
+
+                // Interacción de seguimiento de mirada
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // Evento de clic para ejecutar animaciones
+                model.on('pointertap', () => {
+                    model.motion('', Math.floor(Math.random() * 3));
+                });
+
+                // Manejar resize
+                window.addEventListener('resize', () => {
+                    const sX = innerWidth / model.internalModel.width;
+                    const sY = innerHeight / model.internalModel.height;
+                    model.scale.set(Math.min(sX, sY) * 0.8);
+                    model.x = (innerWidth - model.internalModel.width * model.scale.x) / 2;
+                    model.y = (innerHeight - model.internalModel.height * model.scale.y) / 2;
+                });
+
+            } catch (error) {
+                console.error("Error al cargar el modelo:", error);
+            }
+        })();
+    </script>
+</body>
+</html>
