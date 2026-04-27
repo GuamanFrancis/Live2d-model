@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC - SDK 4.0+</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #333; /* Dark background to see the model better */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+            color: white;
+            font-family: sans-serif;
+        }
+        button {
+            margin: 5px;
+            padding: 8px 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <!-- PixiJS 6.x for stability and WebGL headless compatibility -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.10/dist/browser/pixi.min.js"></script>
+
+    <!-- pixi-live2d-display using the bundled cubism4 for SDK 4.0+ -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="ui-container">
+        <h3>Live2D Interacciones</h3>
+        <p>Mueve el ratón para tracking automático</p>
+        <button onclick="playMotion(0)">Touch 1 (Motion 0)</button>
+        <button onclick="playMotion(1)">Idle (Motion 1)</button>
+        <button onclick="playMotion(2)">Touch 2 (Motion 2)</button>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // Use the global object provided by the library
+        const { Live2DModel } = PIXI.live2d;
+
+        // Initialize PixiJS application
+        const app = new PIXI.Application({
+            view: document.getElementById('canvas'),
+            autoStart: true,
+            resizeTo: window,
+            backgroundAlpha: 0 // Transparent background
+        });
+
+        let currentModel = null;
+
+        async function loadModel() {
+            try {
+                // Asset URI with proper encoding for spaces and special characters
+                const modelPath = 'sin 七大罪～魔王崇拜～/xch001_01/xch001_01.model3.json';
+                const modelUrl = encodeURI(modelPath);
+
+                // Load the model
+                currentModel = await Live2DModel.from(modelUrl);
+
+                // Add to stage
+                app.stage.addChild(currentModel);
+
+                // Handle resizing and scaling
+                const resize = () => {
+                    if (!currentModel) return;
+
+                    // Use unscaled dimensions for accurate scaling
+                    const scaleX = window.innerWidth / currentModel.internalModel.width;
+                    const scaleY = window.innerHeight / currentModel.internalModel.height;
+
+                    // Fit model in screen
+                    const scale = Math.min(scaleX, scaleY) * 0.9;
+                    currentModel.scale.set(scale);
+
+                    // Center the model
+                    currentModel.x = window.innerWidth / 2 - (currentModel.internalModel.width * scale) / 2;
+                    currentModel.y = window.innerHeight / 2 - (currentModel.internalModel.height * scale) / 2;
+                };
+
+                // Trigger initial resize
+                resize();
+
+                // Add listener for window resize
+                window.addEventListener('resize', resize);
+
+            } catch (error) {
+                console.error("Error loading model:", error);
+            }
+        }
+
+        // Function to trigger pre-programmed motions
+        function playMotion(index) {
+            if (currentModel) {
+                // The JSON defines motions under an empty string group ""
+                currentModel.motion('', index);
+            }
+        }
+
+        // Initialize
+        loadModel();
+    </script>
+</body>
+</html>
