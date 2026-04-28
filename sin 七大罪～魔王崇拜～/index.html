@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0+ PoC</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- PixiJS 6.x -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+    <!-- pixi-live2d-display (Cubism 4) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        // Setup PixiJS App
+        const app = new PIXI.Application({
+            view: document.getElementById('canvas'),
+            autoStart: true,
+            resizeTo: window,
+            backgroundColor: 0x333333,
+            resolution: window.devicePixelRatio || 1
+        });
+
+        // Expose PIXI to the global object for pixi-live2d-display
+        window.PIXI = PIXI;
+
+        async function loadModel() {
+            try {
+                // Encode the path to handle special characters or spaces
+                const modelUrl = encodeURI('./xch001_01/xch001_01.model3.json');
+
+                // Load the model
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+                app.stage.addChild(model);
+
+                // Setup scaling
+                const scaleX = innerWidth / model.internalModel.width;
+                const scaleY = innerHeight / model.internalModel.height;
+
+                // Fit to window height
+                model.scale.set(Math.min(scaleX, scaleY) * 0.9);
+
+                // Center the model
+                model.x = (innerWidth - model.internalModel.width * model.scale.x) / 2;
+                model.y = (innerHeight - model.internalModel.height * model.scale.y) / 2;
+
+                // Handle Window Resize
+                window.addEventListener('resize', () => {
+                    const scaleX = innerWidth / model.internalModel.width;
+                    const scaleY = innerHeight / model.internalModel.height;
+                    model.scale.set(Math.min(scaleX, scaleY) * 0.9);
+                    model.x = (innerWidth - model.internalModel.width * model.scale.x) / 2;
+                    model.y = (innerHeight - model.internalModel.height * model.scale.y) / 2;
+                });
+
+                // Eye/Head tracking is enabled by default in pixi-live2d-display
+
+                // Handle Click to Trigger Motion
+                // We use interactive = true and hook the pointertap event
+                model.interactive = true;
+                model.on('pointertap', () => {
+                    // Trigger a random motion from the default group ""
+                    // Since motion("", index) works, we just find how many motions exist
+                    const motionGroups = model.internalModel.motionManager.motionGroups;
+                    if (motionGroups[""]) {
+                        const count = motionGroups[""].length;
+                        const randomIdx = Math.floor(Math.random() * count);
+                        model.motion("", randomIdx);
+                        console.log(`Triggered motion "", index: ${randomIdx}`);
+                    } else {
+                        console.log("No motions found in default group.");
+                    }
+                });
+
+                console.log("Model loaded successfully!");
+            } catch (error) {
+                console.error("Failed to load model:", error);
+            }
+        }
+
+        loadModel();
+    </script>
+</body>
+</html>
