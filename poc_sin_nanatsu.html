@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0+ PoC - sin 七大罪</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            color: #fff;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        canvas {
+            border: 2px solid #333;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            max-width: 100%;
+            max-height: 80vh;
+        }
+        #controls {
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #loading {
+            position: absolute;
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+    </style>
+    <!-- 1. Cargar PixiJS (Versión 6.x recomendada para estabilidad con WebGL/Playwright en este entorno) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- 2. Cargar Cubism Core (Requerido para modelos SDK 4.0+) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- 3. Cargar pixi-live2d-display (Bundle cubism4.min.js para SDK 4.0+) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="loading">Cargando Modelo Live2D...</div>
+    <canvas id="canvas"></canvas>
+    <div id="controls">
+        <button id="animBtn" disabled>Reproducir Animación Aleatoria</button>
+    </div>
+
+    <script>
+        // Configurar el modelo
+        // Codificamos la URI para manejar caracteres asiáticos en la ruta
+        const modelUrl = encodeURI("sin 七大罪～魔王崇拜～/xch001_01/xch001_01.model3.json");
+
+        let currentModel = null;
+
+        // Inicializar la aplicación PixiJS
+        const app = new PIXI.Application({
+            view: document.getElementById('canvas'),
+            autoStart: true,
+            backgroundAlpha: 0, // Fondo transparente para el canvas (muestra el fondo del CSS)
+            width: 800,
+            height: 800,
+            resolution: window.devicePixelRatio || 1
+        });
+
+        // Configuración global de pixi-live2d-display para depuración
+        // PIXI.live2d.config.logLevel = PIXI.live2d.config.LOG_LEVEL_VERBOSE;
+
+        async function initLive2D() {
+            try {
+                // Cargar el modelo
+                // PIXI.live2d.Live2DModel es proporcionado por cubism4.min.js
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+                currentModel = model;
+
+                // Añadir el modelo a la escena
+                app.stage.addChild(model);
+
+                // Ajustar el tamaño y posición del modelo
+                // Usar internalModel.width/height como recomiendan las buenas prácticas
+                const scaleX = app.renderer.width / model.internalModel.width;
+                const scaleY = app.renderer.height / model.internalModel.height;
+                const scale = Math.min(scaleX, scaleY) * 0.9; // 90% para margen
+
+                model.scale.set(scale);
+                model.x = (app.renderer.width - model.internalModel.width * scale) / 2;
+                model.y = (app.renderer.height - model.internalModel.height * scale) / 2;
+
+                // El seguimiento del cursor (eye/head tracking) está habilitado por defecto
+                // en pixi-live2d-display.
+
+                // Configurar botón de animación
+                const animBtn = document.getElementById('animBtn');
+                animBtn.disabled = false;
+                animBtn.onclick = () => {
+                    // El modelo tiene las animaciones en el grupo vacío "" ("": [touch1, idle, touch2])
+                    // Generamos un índice aleatorio entre 0 y 2
+                    const randomIndex = Math.floor(Math.random() * 3);
+                    console.log(`Reproduciendo animación de grupo "" índice: ${randomIndex}`);
+                    model.motion('', randomIndex);
+                };
+
+                // Ocultar mensaje de carga
+                document.getElementById('loading').style.display = 'none';
+                console.log("Modelo Live2D cargado exitosamente.");
+
+            } catch (error) {
+                console.error("Error al cargar el modelo Live2D:", error);
+                document.getElementById('loading').innerText = "Error al cargar el modelo. Ver consola.";
+                document.getElementById('loading').style.color = "red";
+            }
+        }
+
+        // Iniciar carga
+        initLive2D();
+    </script>
+</body>
+</html>
