@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Web Render PoC</title>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #222; }
+        canvas { display: block; }
+    </style>
+    <!-- PixiJS v6.x (Recomendado para mayor estabilidad headless/WebGL) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Cubism Core para SDK 4.0+ -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (Bundle específico para Cubism 4) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <script>
+        // Inicializar PixiJS Application
+        const app = new PIXI.Application({
+            view: document.createElement('canvas'),
+            resizeTo: window,
+            autoDensity: true,
+            resolution: window.devicePixelRatio || 1,
+            backgroundColor: 0x333333,
+        });
+        document.body.appendChild(app.view);
+
+        // Referencia directa al modelo extraído en la carpeta del PoC
+        const modelUrl = 'xch001_01/xch001_01.model3.json';
+
+        // Variables para gestionar la animación
+        let currentModel = null;
+        let motionIndex = 0;
+
+        async function loadModel() {
+            try {
+                // Cargar el Live2DModel
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+                currentModel = model;
+
+                app.stage.addChild(model);
+
+                // Función de auto-escalado para asegurar que se vea bien en la ventana
+                const resize = () => {
+                    // Usar las dimensiones unscaled del internalModel como indica la memoria
+                    const modelWidth = model.internalModel.width;
+                    const modelHeight = model.internalModel.height;
+
+                    const scaleX = (window.innerWidth * 0.8) / modelWidth;
+                    const scaleY = (window.innerHeight * 0.8) / modelHeight;
+
+                    // Mantener la proporción
+                    const scale = Math.min(scaleX, scaleY);
+
+                    model.scale.set(scale);
+                    model.x = (window.innerWidth - modelWidth * scale) / 2;
+                    model.y = (window.innerHeight - modelHeight * scale) / 2;
+                };
+
+                resize();
+                window.addEventListener('resize', resize);
+
+                // El seguimiento del cursor (eye/head tracking) está activo por defecto
+                // pero si quisiéramos control extra, interactúa con app.renderer.plugins.interaction
+
+                // Sistema de Animación e Interacción
+                // Añadir evento de click para lanzar "motions"
+                model.on('pointerdown', () => {
+                    // El JSON tiene un grupo vacío "" para las motions
+                    const motionGroup = "";
+
+                    // Asegurarnos de no sobrepasar el número de animaciones disponibles
+                    // Para xch001_01, hay 3 animaciones (touch1, idle, touch2)
+                    const totalMotions = 3;
+
+                    console.log(`Ejecutando animación índice: ${motionIndex}`);
+                    model.motion(motionGroup, motionIndex);
+
+                    motionIndex = (motionIndex + 1) % totalMotions;
+                });
+
+                // Habilitar la interacción en PixiJS
+                model.interactive = true;
+                model.buttonMode = true;
+
+                console.log("Modelo Live2D cargado exitosamente.");
+
+            } catch (error) {
+                console.error("Error cargando el modelo Live2D:", error);
+            }
+        }
+
+        loadModel();
+    </script>
+</body>
+</html>
