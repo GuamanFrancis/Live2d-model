@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+    <!-- Live2D Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- PixiJS 6.5.10 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+    <!-- pixi-live2d-display (cubism4 bundle) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <script>
+        (async function() {
+            // Inicializar la aplicación PixiJS
+            const app = new PIXI.Application({
+                view: document.createElement('canvas'),
+                autoStart: true,
+                resizeTo: window,
+                backgroundColor: 0x333333
+            });
+            document.body.appendChild(app.view);
+
+            try {
+                // Modelo Live2D a cargar (xch001_01)
+                const modelUrl = 'xch001_01/xch001_01.model3.json';
+
+                // Cargar el modelo
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+                // Escalar el modelo basándose en sus dimensiones internas no escaladas
+                const scaleX = innerWidth / model.internalModel.width;
+                const scaleY = innerHeight / model.internalModel.height;
+                // Usar un factor para que el modelo se ajuste bien a la pantalla
+                model.scale.set(Math.min(scaleX, scaleY) * 0.9);
+
+                // Centrar el modelo en la pantalla
+                model.x = app.screen.width / 2;
+                model.y = app.screen.height / 2 + (model.internalModel.height * model.scale.y) / 2;
+                model.anchor.set(0.5, 1);
+
+                // Añadir el modelo a la escena
+                app.stage.addChild(model);
+
+                // Exponer el modelo globalmente para interactuar en la consola si es necesario
+                window.live2dModel = model;
+
+                // Indicador para la prueba con Playwright de que el modelo cargó correctamente
+                window.poc_model_loaded = true;
+                console.log("Model loaded successfully");
+
+                // Sistema de Animación e Interacción: Seguimiento del cursor (eye/head tracking)
+                // pixi-live2d-display maneja el focus automáticamente, pero también podemos
+                // activar animaciones al hacer clic en el modelo.
+                model.on('pointertap', () => {
+                    // Seleccionar un índice de animación al azar
+                    // El modelo tiene un grupo vacío "" en las animaciones
+                    if (model.internalModel.motionManager.motionGroups[""]) {
+                        const motions = model.internalModel.motionManager.motionGroups[""];
+                        const randomIndex = Math.floor(Math.random() * motions.length);
+                        // Disparar la animación del grupo vacío "" en el índice seleccionado
+                        model.motion("", randomIndex);
+                        console.log(`Playing motion from group "" at index ${randomIndex}`);
+                    } else {
+                        // Intentar con un grupo por defecto
+                        model.motion("", 0);
+                        console.log('Playing default motion');
+                    }
+                });
+
+                // Activar eventos de puntero en el modelo para el pointertap
+                model.interactive = true;
+                model.buttonMode = true;
+
+            } catch (error) {
+                console.error("Error loading Live2D model:", error);
+            }
+        })();
+    </script>
+</body>
+</html>
