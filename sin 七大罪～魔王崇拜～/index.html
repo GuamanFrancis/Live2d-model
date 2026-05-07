@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Web Render PoC</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+        }
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: sans-serif;
+            pointer-events: auto;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+    <!-- PixiJS v6 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (Cubism 4 bundle) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="controls">
+        <h3>Controles</h3>
+        <p>El modelo sigue tu cursor.</p>
+        <button id="btn-touch1">Motion: touch1</button>
+        <button id="btn-idle">Motion: idle</button>
+        <button id="btn-touch2">Motion: touch2</button>
+    </div>
+
+    <script>
+        // Configuración inicial de PixiJS
+        const app = new PIXI.Application({
+            view: document.createElement('canvas'),
+            width: window.innerWidth,
+            height: window.innerHeight,
+            autoStart: true,
+            transparent: true,
+            resolution: window.devicePixelRatio || 1
+        });
+        document.body.appendChild(app.view);
+
+        // Exponer PIXI de manera global es necesario para pixi-live2d-display en algunos entornos
+        window.PIXI = PIXI;
+
+        // Función principal asíncrona
+        async function loadModel() {
+            try {
+                // Ruta al modelo. Nota: Usamos encodeURI si la carpeta contiene espacios o caracteres especiales
+                const modelPath = "xch001_01/xch001_01.model3.json";
+
+                // Cargar el modelo
+                const model = await PIXI.live2d.Live2DModel.from(modelPath);
+
+                // Configurar escala y posición
+                const scaleX = window.innerWidth / model.internalModel.width;
+                const scaleY = window.innerHeight / model.internalModel.height;
+                model.scale.set(Math.min(scaleX, scaleY) * 0.8); // 80% del espacio disponible
+
+                model.x = window.innerWidth / 2;
+                model.y = window.innerHeight / 2 + (model.internalModel.height * model.scale.y) / 2;
+                model.anchor.set(0.5, 1); // Anclar a la parte inferior centro
+
+                // Añadir al stage de Pixi
+                app.stage.addChild(model);
+
+                // Sistema de Animación e Interacción:
+                // Eye/Head tracking (Manejado internamente por pixi-live2d-display,
+                // solo necesitamos escuchar el evento del cursor)
+                // (Por defecto pixi-live2d-display ya incluye el tracking basado en eventos del mouse)
+
+                // Botones para las animaciones (motions)
+                document.getElementById('btn-touch1').addEventListener('click', () => {
+                    model.motion('', 0); // Ejecutar la primera animación en el grupo por defecto ("")
+                });
+                document.getElementById('btn-idle').addEventListener('click', () => {
+                    model.motion('', 1); // Ejecutar la segunda animación
+                });
+                document.getElementById('btn-touch2').addEventListener('click', () => {
+                    model.motion('', 2); // Ejecutar la tercera animación
+                });
+
+                // Ajustar al redimensionar la ventana
+                window.addEventListener('resize', () => {
+                    app.renderer.resize(window.innerWidth, window.innerHeight);
+                    const newScaleX = window.innerWidth / model.internalModel.width;
+                    const newScaleY = window.innerHeight / model.internalModel.height;
+                    model.scale.set(Math.min(newScaleX, newScaleY) * 0.8);
+
+                    model.x = window.innerWidth / 2;
+                    model.y = window.innerHeight / 2 + (model.internalModel.height * model.scale.y) / 2;
+                });
+
+            } catch (error) {
+                console.error("Error al cargar el modelo:", error);
+            }
+        }
+
+        // Iniciar
+        loadModel();
+    </script>
+</body>
+</html>
