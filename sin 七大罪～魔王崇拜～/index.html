@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0+ PoC</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+
+    <!-- PixiJS (6.5.10) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (cubism4 bundle) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // Inicializar la aplicación PixiJS
+        const canvas = document.getElementById('canvas');
+        const app = new PIXI.Application({
+            view: canvas,
+            resizeTo: window,
+            autoStart: true,
+            backgroundColor: 0x333333,
+            resolution: window.devicePixelRatio || 1,
+        });
+
+        // Configurar la clase de modelo Live2D
+        const live2d = PIXI.live2d;
+
+        async function init() {
+            try {
+                // Asegurarnos de que las rutas con caracteres especiales estén correctamente codificadas
+                const modelPath = encodeURI('xch001_01/xch001_01.model3.json');
+
+                // Cargar el modelo
+                const model = await live2d.Live2DModel.from(modelPath);
+
+                // Configurar escala y posición del modelo
+                const scaleX = innerWidth / model.internalModel.width;
+                const scaleY = innerHeight / model.internalModel.height;
+                // Usar la menor escala para mantener la relación de aspecto
+                model.scale.set(Math.min(scaleX, scaleY) * 0.9);
+
+                // Centrar el modelo en la pantalla
+                model.x = innerWidth / 2;
+                model.y = innerHeight / 2;
+                // Ajustar el punto de anclaje (si está soportado por el modelo de datos, o ajustar con el offset)
+                model.anchor.set(0.5, 0.5);
+
+                app.stage.addChild(model);
+
+                // Sistema de interacción y animación
+                // El seguimiento del cursor (eye/head tracking) es manejado automáticamente por pixi-live2d-display.
+
+                // Añadir evento para reproducir animaciones (motions) al hacer clic
+                model.on('pointerdown', () => {
+                    // El modelo específico tiene las animaciones en un grupo con nombre vacío ("")
+                    // Seleccionamos un índice aleatorio entre las animaciones disponibles
+                    const motionGroup = "";
+                    const motionIndex = Math.floor(Math.random() * 3); // hay 3 animaciones según el model3.json
+                    console.log(`Reproduciendo animación: grupo "${motionGroup}", índice ${motionIndex}`);
+                    model.motion(motionGroup, motionIndex);
+                });
+
+                // Reaccionar a redimensionado de ventana
+                window.addEventListener('resize', () => {
+                    const newScaleX = innerWidth / model.internalModel.width;
+                    const newScaleY = innerHeight / model.internalModel.height;
+                    model.scale.set(Math.min(newScaleX, newScaleY) * 0.9);
+                    model.x = innerWidth / 2;
+                    model.y = innerHeight / 2;
+                });
+
+            } catch (error) {
+                console.error("Error al cargar el modelo Live2D:", error);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
