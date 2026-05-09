@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Model PoC - Seven Mortal Sins</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #2c3e50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+        }
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            pointer-events: none;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+        }
+    </style>
+    <!-- Core dependencies -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+    <!-- pixi-live2d-display specifically for Cubism 4+ -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="canvas-container">
+        <div id="loading">Cargando modelo Live2D...</div>
+        <canvas id="live2d-canvas"></canvas>
+        <div id="instructions">Haz clic en el personaje para reproducir una animación. El modelo seguirá tu cursor.</div>
+    </div>
+
+    <script>
+        (async function main() {
+            const canvas = document.getElementById('live2d-canvas');
+
+            // Inicializar la aplicación Pixi
+            const app = new PIXI.Application({
+                view: canvas,
+                autoStart: true,
+                resizeTo: window,
+                backgroundColor: 0x2c3e50,
+                resolution: window.devicePixelRatio || 1,
+            });
+
+            try {
+                // Configuración del modelo
+                // Path must be encoded to handle potential spaces or special characters
+                const modelPath = 'xch001_01/xch001_01.model3.json';
+
+                // Cargar el modelo
+                const model = await PIXI.live2d.Live2DModel.from(encodeURI(modelPath));
+
+                // Añadir el modelo a la escena
+                app.stage.addChild(model);
+
+                // Ocultar texto de carga
+                document.getElementById('loading').style.display = 'none';
+
+                // Ajustar el tamaño del modelo para que encaje en la pantalla
+                function resizeModel() {
+                    const scaleX = window.innerWidth / model.internalModel.width;
+                    const scaleY = window.innerHeight / model.internalModel.width; // using width to keep aspect ratio based on width, usually better
+                    const scale = Math.min(scaleX, scaleY) * 0.9; // 90% of screen to leave some margin
+
+                    model.scale.set(scale);
+
+                    // Centrar
+                    model.x = (window.innerWidth - model.internalModel.width * scale) / 2;
+                    model.y = (window.innerHeight - model.internalModel.height * scale) / 2;
+                }
+
+                // Redimensionar al cargar y al cambiar el tamaño de la ventana
+                resizeModel();
+                window.addEventListener('resize', resizeModel);
+
+                // Interacción: Click para reproducir animaciones
+                // El seguimiento del cursor (eye/head tracking) es automático en pixi-live2d-display
+                model.on('pointerdown', () => {
+                    // Hay 3 motions en el archivo ("": ["touch1", "idle", "touch2"])
+                    // Verificamos si podemos obtener un listado, si no, intentamos aleatoriamente
+                    const motionIndex = Math.floor(Math.random() * 3);
+                    console.log(`Reproduciendo animación (índice ${motionIndex})`);
+                    model.motion('', motionIndex, 3); // 3 es la prioridad de la animación
+                });
+
+            } catch (error) {
+                console.error("Error al cargar el modelo:", error);
+                document.getElementById('loading').innerText = "Error al cargar el modelo: " + error.message;
+            }
+        })();
+    </script>
+</body>
+</html>
