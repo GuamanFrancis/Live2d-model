@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+    <!-- PixiJS v6 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Cubism Core for SDK 4.0+ -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (Cubism 4 specific build) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // Use specific PIXI.js globals
+        const app = new PIXI.Application({
+            view: document.getElementById('canvas'),
+            autoStart: true,
+            resizeTo: window,
+            backgroundColor: 0x333333,
+            resolution: window.devicePixelRatio || 1
+        });
+
+        // The URL to the model file, using encodeURI to handle spaces/special characters
+        const modelUrl = encodeURI('./xch001_01/xch001_01.model3.json');
+
+        async function init() {
+            try {
+                // Initialize the Live2D model using the specific PIXI wrapper
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+                app.stage.addChild(model);
+
+                // Auto-scale to fit the screen based on internalModel.width/height to avoid distortion
+                const scaleX = innerWidth / model.internalModel.width;
+                const scaleY = innerHeight / model.internalModel.height;
+                // Fit into the window while preserving aspect ratio, with a small padding
+                model.scale.set(Math.min(scaleX, scaleY) * 0.9);
+
+                // Center the model
+                model.x = (innerWidth - model.width) / 2;
+                model.y = (innerHeight - model.height) / 2;
+
+                // Allow interactions (pointer tracking)
+                model.on('pointerdown', () => {
+                    // Start an animation when clicked
+                    model.motion('', 0);
+                });
+
+                model.interactive = true;
+
+                // Handle resize
+                window.addEventListener('resize', () => {
+                    const scaleX = innerWidth / model.internalModel.width;
+                    const scaleY = innerHeight / model.internalModel.height;
+                    model.scale.set(Math.min(scaleX, scaleY) * 0.9);
+                    model.x = (innerWidth - model.width) / 2;
+                    model.y = (innerHeight - model.height) / 2;
+                });
+
+                console.log("Model loaded successfully");
+
+            } catch (error) {
+                console.error("Error loading the model:", error);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
