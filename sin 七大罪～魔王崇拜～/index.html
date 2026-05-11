@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Model Viewer PoC</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+    <!-- Load PixiJS 6.5.10 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Load Live2D Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- Load pixi-live2d-display (Cubism 4 bundle) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // Use the global PIXI and PIXI.live2d
+        const { Application } = PIXI;
+        const { Live2DModel } = PIXI.live2d;
+
+        (async function main() {
+            // Create PixiJS application
+            const app = new Application({
+                view: document.getElementById('canvas'),
+                autoStart: true,
+                resizeTo: window,
+                backgroundColor: 0x333333,
+            });
+
+            // Path to the model3.json file, properly encoded for special characters
+            const modelUrl = encodeURI('./xch001_01/xch001_01.model3.json');
+
+            try {
+                // Load the Live2D model
+                const model = await Live2DModel.from(modelUrl);
+
+                // Add the model to the stage
+                app.stage.addChild(model);
+
+                // Scale the model to fit the screen
+                const scaleX = window.innerWidth / model.internalModel.width;
+                const scaleY = window.innerHeight / model.internalModel.height;
+                const scale = Math.min(scaleX, scaleY) * 0.9; // 90% of screen height
+                model.scale.set(scale);
+
+                // Center the model horizontally, align to bottom
+                model.x = (window.innerWidth - model.internalModel.width * scale) / 2;
+                model.y = window.innerHeight - model.internalModel.height * scale;
+
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    const newScaleX = window.innerWidth / model.internalModel.width;
+                    const newScaleY = window.innerHeight / model.internalModel.height;
+                    const newScale = Math.min(newScaleX, newScaleY) * 0.9;
+                    model.scale.set(newScale);
+                    model.x = (window.innerWidth - model.internalModel.width * newScale) / 2;
+                    model.y = window.innerHeight - model.internalModel.height * newScale;
+                });
+
+                // Interaction: Eye tracking
+                // pixi-live2d-display handles cursor tracking by default!
+
+                // Interaction: Play motion on click
+                model.on('pointertap', () => {
+                    model.motion('', 0); // Play random motion from default group, or first group
+                });
+
+                // Make model interactive for pointer events to work
+                model.interactive = true;
+                model.buttonMode = true;
+
+                console.log("Model loaded successfully");
+            } catch (error) {
+                console.error("Failed to load model:", error);
+            }
+        })();
+    </script>
+</body>
+</html>
