@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC - SDK 4.0+</title>
+    <style>
+        body { margin: 0; padding: 0; background-color: #333; display: flex; flex-direction: column; align-items: center; height: 100vh; color: white; font-family: sans-serif; overflow: hidden; }
+        #canvas-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; }
+        canvas { display: block; }
+        #controls { padding: 20px; background: #222; width: 100%; box-sizing: border-box; text-align: center; position: absolute; bottom: 0; z-index: 10; }
+        button { padding: 10px 20px; margin: 0 10px; font-size: 16px; cursor: pointer; }
+    </style>
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- PixiJS 6.5.10 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+    <!-- pixi-live2d-display -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="live2d-canvas"></canvas>
+    </div>
+    <div id="controls">
+        <button onclick="playMotion(0)">Touch 1</button>
+        <button onclick="playMotion(1)">Idle</button>
+        <button onclick="playMotion(2)">Touch 2</button>
+    </div>
+
+    <script>
+        const { Live2DModel } = PIXI.live2d;
+
+        const modelUrl = encodeURI('sin 七大罪～魔王崇拜～/xch001_01/xch001_01.model3.json');
+
+        let app;
+        let model;
+
+        async function init() {
+            app = new PIXI.Application({
+                view: document.getElementById('live2d-canvas'),
+                autoStart: true,
+                resizeTo: window,
+                backgroundColor: 0x333333
+            });
+
+            try {
+                model = await Live2DModel.from(modelUrl);
+                app.stage.addChild(model);
+
+                const resize = () => {
+                    const modelWidth = model.internalModel.width;
+                    const modelHeight = model.internalModel.height;
+
+                    const scaleX = window.innerWidth / modelWidth;
+                    const scaleY = window.innerHeight / modelHeight;
+
+                    const scale = Math.min(scaleX, scaleY) * 0.9;
+
+                    model.scale.set(scale);
+                    model.x = (window.innerWidth - modelWidth * scale) / 2;
+                    model.y = (window.innerHeight - modelHeight * scale) / 2;
+                };
+
+                window.addEventListener('resize', resize);
+                resize();
+
+            } catch (error) {
+                console.error("Error loading Live2D model:", error);
+            }
+        }
+
+        function playMotion(index) {
+            if (model) {
+                model.motion('', index);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
