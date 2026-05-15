@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0+ PoC</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #2c3e50; }
+        canvas { display: block; }
+    </style>
+    <!-- Core Live2D SDK (requerido para modelos v3/v4) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- PixiJS 6.5.10 (probado para headless/WebGL) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+    <!-- pixi-live2d-display (cubism4 bundle) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const app = new PIXI.Application({
+            view: canvas,
+            autoStart: true,
+            resizeTo: window,
+            backgroundColor: 0x2c3e50
+        });
+
+        // Asegurar que la librería Live2DModels funciona de manera asíncrona adecuadamente en Pixi
+        const live2d = PIXI.live2d;
+
+        async function init() {
+            // El modelo que vamos a cargar
+            // Nota: Se debe codificar la URL si tiene espacios o caracteres especiales
+            const modelUrl = encodeURI("sin 七大罪～魔王崇拜～/xch001_01/xch001_01.model3.json");
+
+            try {
+                // Cargar el modelo
+                const model = await live2d.Live2DModel.from(modelUrl);
+
+                // Configurar posicion y escala del modelo
+                app.stage.addChild(model);
+
+                // Usamos las dimensiones base sin escalar para evitar distorsiones
+                const scaleX = innerWidth / model.internalModel.width;
+                const scaleY = innerHeight / model.internalModel.height;
+
+                // Ajustar al menor tamaño para asegurar que entra en pantalla, limitado a un tamaño sensato
+                model.scale.set(Math.min(scaleX, scaleY) * 0.8);
+                model.anchor.set(0.5, 0.5);
+                model.position.set(innerWidth / 2, innerHeight / 2);
+
+                // Interacción: Eye/Head Tracking (Automático al habilitar interacción y escuchar a la app)
+                // Se habilita de forma predeterminada pero en algunos casos se requiere un tick/update manual,
+                // pixi-live2d-display ya lo hace tras bambalinas si la app interactiva está viva.
+
+                // Animación al clickear
+                model.on('pointertap', () => {
+                    // Cargar una animación si existe. Opcion 0 (toca la primera animacion)
+                    model.motion('', 0);
+                });
+
+                // Hacer que el modelo reaccione al hover (opcional extra)
+                // Y seguir el raton (eye/head tracking automático a través del contenedor interactivo)
+                // La librería ya intercepta pointermove.
+                console.log("Model loaded successfully!");
+            } catch(e) {
+                console.error("Error loading Live2D model:", e);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
