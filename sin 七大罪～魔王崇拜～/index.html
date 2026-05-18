@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC - SDK 4.0+</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            color: #fff;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #canvas-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        #ui-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            pointer-events: none;
+        }
+    </style>
+
+    <!-- Dependencies -->
+    <!-- Live2D Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- PixiJS v6.5.10 (Recommended for SwiftShader/Playwright compatibility and general stability) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Set PIXI globally for pixi-live2d-display -->
+    <script>
+        window.PIXI = PIXI;
+    </script>
+
+    <!-- pixi-live2d-display (Cubism 4 specific build, no explicit beta tags) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="canvas-container">
+        <div id="loading">Cargando Modelo...</div>
+        <canvas id="canvas"></canvas>
+    </div>
+    <div id="ui-panel">
+        <!-- Buttons will be injected here dynamically based on available motions -->
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const canvas = document.getElementById('canvas');
+            const uiPanel = document.getElementById('ui-panel');
+            const loadingText = document.getElementById('loading');
+
+            // Initialize PixiJS Application
+            const app = new PIXI.Application({
+                view: canvas,
+                autoStart: true,
+                resizeTo: document.getElementById('canvas-container'),
+                backgroundColor: 0x1a1a1a,
+                resolution: window.devicePixelRatio || 1,
+            });
+
+            // Model Configuration
+            // Note: Ensuring spaces and special characters in path are handled if not on root,
+            // but we are running the server from the root of the "sin 七大罪～魔王崇拜～" folder.
+            const modelUrl = 'xch001_01/xch001_01.model3.json';
+
+            try {
+                // Expose Live2DModels explicitly from global if needed, usually it's under PIXI.live2d
+                const { Live2DModel } = PIXI.live2d;
+
+                // Load the model
+                const model = await Live2DModel.from(modelUrl);
+
+                app.stage.addChild(model);
+
+                // Hide loading text
+                loadingText.style.display = 'none';
+
+                // Handle Resizing properly
+                const resizeModel = () => {
+                    // Use unscaled width/height for calculations
+                    const scaleX = (app.renderer.width * 0.8) / model.internalModel.width;
+                    const scaleY = (app.renderer.height * 0.8) / model.internalModel.height;
+                    const scale = Math.min(scaleX, scaleY);
+
+                    model.scale.set(scale);
+
+                    // Center the model
+                    model.x = app.renderer.width / 2 - (model.internalModel.width * scale) / 2;
+                    model.y = app.renderer.height / 2 - (model.internalModel.height * scale) / 2;
+                };
+
+                window.addEventListener('resize', resizeModel);
+                resizeModel(); // Initial sizing
+
+                // Cursor Tracking (Eye/Head)
+                // pixi-live2d-display handles this automatically when pointer events happen on the app view
+                // We just need to enable interaction
+                model.interactive = true;
+
+                // Motion Handling
+                // Fetch available motions from the internal model data
+                const motionGroups = model.internalModel.settings.motions || {};
+
+                // Typically default group is empty string "" or "idle", "tap_body" etc.
+                const defaultGroup = motionGroups[""] || [];
+
+                if (defaultGroup.length > 0) {
+                    defaultGroup.forEach((motion, index) => {
+                        const btn = document.createElement('button');
+                        // Extracting simple name from file path if possible
+                        let motionName = `Motion ${index + 1}`;
+                        if (motion.File) {
+                            const parts = motion.File.split('/');
+                            const fileName = parts[parts.length - 1];
+                            motionName = fileName.replace('.motion3.json', '');
+                        }
+                        btn.textContent = motionName;
+                        btn.onclick = () => {
+                            // Trigger programmed animation
+                            // Parameters: groupName, index
+                            console.log(`Playing motion from group "", index ${index}`);
+                            model.motion("", index);
+                        };
+                        uiPanel.appendChild(btn);
+                    });
+                } else {
+                    const info = document.createElement('span');
+                    info.textContent = "No motions defined in root group.";
+                    uiPanel.appendChild(info);
+                }
+
+                // Make model globally accessible for debugging
+                window.l2dModel = model;
+
+            } catch (error) {
+                console.error("Error loading Live2D model:", error);
+                loadingText.textContent = "Error al cargar el modelo. Revisa la consola.";
+                loadingText.style.color = "red";
+            }
+        });
+    </script>
+</body>
+</html>
