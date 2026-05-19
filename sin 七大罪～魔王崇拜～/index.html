@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Model PoC - Arquitectura Robusta</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #fff;
+            font-family: sans-serif;
+            overflow: hidden;
+        }
+        #canvas-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background-color: #2a2a2a;
+        }
+        #ui-layer {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+        }
+        .info-text {
+            background: rgba(0,0,0,0.6);
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 14px;
+        }
+    </style>
+    <!-- PixiJS v6.x (Recomendado para headless/Playwright SwiftShader) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Exponer PIXI de forma global requerido por pixi-live2d-display -->
+    <script>
+        window.PIXI = PIXI;
+    </script>
+
+    <!-- Live2D Cubism Core SDK 4.0+ -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (Bundle Cubism 4, unversioned stable URL) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+
+<div id="canvas-container">
+    <div id="ui-layer">
+        <div class="info-text">Haz click en el modelo para reproducir animaciones. El modelo seguirá tu cursor.</div>
+    </div>
+</div>
+
+<script>
+    // Inicializar la aplicación de PixiJS
+    const app = new PIXI.Application({
+        width: 800,
+        height: 600,
+        backgroundColor: 0x2a2a2a,
+        resolution: window.devicePixelRatio || 1,
+        autoDensity: true,
+    });
+
+    document.getElementById('canvas-container').appendChild(app.view);
+
+    // URI al modelo .model3.json (Codificado correctamente por si acaso)
+    const modelUrl = "xch001_01/xch001_01.model3.json";
+
+    // Alias a la clase estática provista por pixi-live2d-display
+    const Live2DModel = PIXI.live2d.Live2DModel;
+
+    async function loadModel() {
+        try {
+            console.log("Iniciando carga del modelo...");
+
+            // Cargar de manera asíncrona todos los recursos (moc3, texturas, json)
+            const model = await Live2DModel.from(modelUrl);
+
+            // Escalar el modelo acorde al tamaño del contenedor de PixiJS
+            const scaleX = app.screen.width / model.internalModel.width;
+            const scaleY = app.screen.height / model.internalModel.height;
+            // Usar la escala más restrictiva para que el modelo entre completo
+            model.scale.set(Math.min(scaleX, scaleY) * 0.9); // 90% para dar margen
+
+            // Centrar el modelo horizontal y verticalmente
+            model.x = (app.screen.width - model.internalModel.width * model.scale.x) / 2;
+            model.y = (app.screen.height - model.internalModel.height * model.scale.y) / 2;
+
+            app.stage.addChild(model);
+            console.log("Modelo cargado exitosamente en la escena.");
+
+            // Sistema de Animación e Interacción:
+            // pixi-live2d-display ya gestiona el eye/head tracking basado en el pointer nativo.
+            // Para eventos interactivos y motions programados:
+
+            model.on('pointerdown', (e) => {
+                console.log("Click detectado en el modelo.");
+
+                // Ejecutar animación de forma pseudo-aleatoria
+                // En este modelo particular según su .model3.json no hay grupo explícito, se usa ''
+                // Las animaciones son: touch1, idle, touch2 (índices 0, 1, 2)
+                const motionIndex = Math.floor(Math.random() * 3);
+                console.log(`Ejecutando motion del grupo '' con índice: ${motionIndex}`);
+
+                model.motion('', motionIndex);
+            });
+
+        } catch (error) {
+            console.error("Error cargando el modelo Live2D:", error);
+            const ui = document.querySelector('.info-text');
+            if(ui) ui.innerHTML = `<span style="color:red">Error cargando modelo: ${error.message}</span>`;
+        }
+    }
+
+    // Arrancar la rutina asíncrona
+    loadModel();
+</script>
+
+</body>
+</html>
