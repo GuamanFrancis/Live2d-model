@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC - Arquitectura de Referencia</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Dependencias Core -->
+    <!-- 1. Cubism Core (Requerido para SDK 4.0+) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- 2. PixiJS (v6.x es recomendado para estabilidad WebGL sin errores) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.10/dist/browser/pixi.min.js"></script>
+
+    <!-- Exponer PIXI de manera global para que pixi-live2d-display lo detecte -->
+    <script>
+        window.PIXI = PIXI;
+    </script>
+
+    <!-- 3. pixi-live2d-display (Bundle Cubism 4) -->
+    <!-- Se usa el base URL sin etiquetas beta para evitar errores de 'Live2DModel is undefined' -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+
+    <script>
+        // Inicialización de la aplicación PixiJS
+        const app = new PIXI.Application({
+            view: document.createElement('canvas'),
+            autoStart: true,
+            resizeTo: window,
+            backgroundColor: 0x333333
+        });
+        document.body.appendChild(app.view);
+
+        // Clase principal encapsulando la lógica de negocio
+        class Live2DController {
+            constructor(app, modelUrl) {
+                this.app = app;
+                this.modelUrl = encodeURI(modelUrl); // Seguro para rutas con espacios/caracteres especiales
+                this.model = null;
+
+                this.init();
+            }
+
+            async init() {
+                try {
+                    // Carga diferida (Lazy loading)
+                    console.log("Cargando modelo desde: " + this.modelUrl);
+                    this.model = await PIXI.live2d.Live2DModel.from(this.modelUrl);
+
+                    // Añadir modelo al grafo de escena (Scene Graph)
+                    this.app.stage.addChild(this.model);
+
+                    // Ajustar escala y posición
+                    this.resize();
+
+                    // Manejar resize de la ventana
+                    window.addEventListener('resize', () => this.resize());
+
+                    // Configurar Interacciones (Eye/Head tracking es automático)
+                    this.setupInteractions();
+
+                    console.log("Modelo inicializado correctamente.");
+                } catch (error) {
+                    console.error("Error al cargar el modelo Live2D:", error);
+                }
+            }
+
+            resize() {
+                if (!this.model) return;
+
+                // Usamos las dimensiones internas para el cálculo de escala para evitar distorsiones
+                const scaleX = window.innerWidth / this.model.internalModel.width;
+                const scaleY = window.innerHeight / this.model.internalModel.height;
+
+                // Mantener proporción (Fit to screen)
+                const scale = Math.min(scaleX, scaleY) * 0.9; // 90% del tamaño de la pantalla
+
+                this.model.scale.set(scale);
+
+                // Centrar modelo
+                this.model.x = (window.innerWidth - this.model.internalModel.width * scale) / 2;
+                this.model.y = (window.innerHeight - this.model.internalModel.height * scale) / 2;
+            }
+
+            setupInteractions() {
+                // Hacer el modelo interactivo
+                this.model.interactive = true;
+                this.model.buttonMode = true;
+
+                // Manejador de eventos (Pointer Tap para soportar mouse y touch)
+                this.model.on('pointertap', () => {
+                    console.log("Interacción detectada: reproduciendo animación aleatoria.");
+                    // Reproducir motion aleatorio (cadena vacía selecciona cualquier grupo disponible)
+                    this.model.motion('', undefined);
+                });
+            }
+        }
+
+        // Instanciar la lógica (PoC)
+        // Apuntamos al modelo específico requerido
+        const modelPath = 'xch001_01/xch001_01.model3.json';
+        const controller = new Live2DController(app, modelPath);
+
+    </script>
+</body>
+</html>
