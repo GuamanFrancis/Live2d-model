@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Web Rendering - Proof of Concept</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            display: block;
+        }
+        #loading {
+            position: absolute;
+            color: white;
+            font-family: sans-serif;
+            font-size: 1.5rem;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Cargando Modelo Live2D...</div>
+    <canvas id="canvas"></canvas>
+
+    <!-- Dependencias Core: PixiJS v6 y Cubism Core SDK 4 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (Bundle específico para Cubism 4 sin versiones beta problemáticas) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+
+    <script>
+        // Exponer PIXI globalmente para que pixi-live2d-display pueda inicializarse correctamente
+        window.PIXI = PIXI;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const canvas = document.getElementById('canvas');
+            const loadingText = document.getElementById('loading');
+
+            // Inicializar la aplicación PixiJS
+            const app = new PIXI.Application({
+                view: canvas,
+                autoStart: true,
+                resizeTo: window,
+                backgroundColor: 0x1a1a1a,
+                antialias: true
+            });
+
+            // URI del modelo a cargar (con codificación adecuada para espacios y caracteres especiales)
+            // Seleccionamos un modelo base como prueba de concepto
+            const modelUri = encodeURI('xch001_01/xch001_01.model3.json');
+
+            try {
+                // Instanciar y cargar asincrónicamente los recursos del modelo
+                const { Live2DModel } = PIXI.live2d;
+                const model = await Live2DModel.from(modelUri);
+
+                // Ocultar texto de carga cuando la promesa se resuelve exitosamente
+                loadingText.style.display = 'none';
+
+                // Añadir el modelo a la escena (Stage)
+                app.stage.addChild(model);
+
+                // Función arquitectónica para el redimensionamiento fluido
+                const resizeModel = () => {
+                    // Se usan las medidas internas no escaladas para evitar distorsión de la malla
+                    const scaleX = window.innerWidth / model.internalModel.width;
+                    const scaleY = window.innerHeight / model.internalModel.height;
+
+                    // Elegir la menor escala para mantener la relación de aspecto contenida en pantalla
+                    const scale = Math.min(scaleX, scaleY) * 0.9; // 0.9 para dar un pequeño margen
+
+                    model.scale.set(scale);
+
+                    // Centrar el modelo en la pantalla
+                    model.x = (window.innerWidth - model.internalModel.width * scale) / 2;
+                    model.y = (window.innerHeight - model.internalModel.height * scale) / 2;
+                };
+
+                // Suscribirse a los cambios de tamaño de ventana y forzar render inicial
+                window.addEventListener('resize', resizeModel);
+                resizeModel();
+
+                // Habilitar la interacción (Touch / Click)
+                model.interactive = true;
+
+                // Seguimiento del Cursor:
+                // Se maneja out-of-the-box por pixi-live2d-display acoplado al movimiento sobre la App de Pixi.
+
+                // Animación (Motions):
+                model.on('pointertap', () => {
+                    // Según el model3.json, los motions están definidos bajo un grupo con string vacío: ""
+                    // Se dispara una animación aleatoria para demostrar la interactividad fluida.
+                    model.motion('', undefined, 3); // Prioridad alta para interrumpir
+                });
+
+            } catch (error) {
+                console.error("Error cargando el modelo Live2D:", error);
+                loadingText.innerText = "Error cargando el modelo. Revisa la consola.";
+                loadingText.style.color = "red";
+            }
+        });
+    </script>
+</body>
+</html>
