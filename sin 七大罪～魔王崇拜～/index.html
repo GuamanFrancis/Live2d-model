@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Model PoC - SDK 4.0+</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #2c3e50;
+            font-family: Arial, sans-serif;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 8px;
+            color: white;
+            z-index: 10;
+        }
+        button {
+            display: block;
+            margin-top: 10px;
+            padding: 8px 12px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 20;
+        }
+    </style>
+
+    <!-- 1. Cubism Core (Requerido para SDK 4.0+) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- 2. PixiJS (Usamos 6.x para mayor compatibilidad headless/WebGL en Playwright) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.10/dist/browser/pixi.min.js"></script>
+
+    <!-- Exponer PIXI de forma global antes de cargar pixi-live2d-display -->
+    <script>
+        window.PIXI = PIXI;
+    </script>
+
+    <!-- 3. pixi-live2d-display (Bundle de Cubism 4, versión estable) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+
+    <div id="loading">Cargando modelo...</div>
+
+    <div id="ui-container" style="display: none;">
+        <h3>Controles</h3>
+        <button id="btn-idle">Animación: Idle</button>
+        <button id="btn-touch1">Animación: Touch 1</button>
+        <button id="btn-touch2">Animación: Touch 2</button>
+    </div>
+
+    <div id="canvas-container">
+        <!-- El canvas de PixiJS se inyectará aquí -->
+    </div>
+
+    <script>
+        // Archivo del modelo. Asegurar URI encoding para rutas complejas/caracteres especiales.
+        // Asume que estamos sirviendo la carpeta 'sin 七大罪～魔王崇拜～' en el root
+        const modelPath = encodeURI("xch001_01/xch001_01.model3.json");
+
+        // Inicializar Aplicación PixiJS
+        const app = new PIXI.Application({
+            view: document.createElement('canvas'),
+            resizeTo: window,
+            transparent: true,
+            autoDensity: true,
+            resolution: window.devicePixelRatio || 1,
+        });
+
+        document.getElementById('canvas-container').appendChild(app.view);
+
+        let currentModel = null;
+
+        async function init() {
+            try {
+                console.log("Iniciando carga del modelo...");
+
+                // Cargar modelo Live2D
+                // pixi-live2d-display maneja el parseo de .model3.json e inyecta Live2DModel en PIXI
+                const model = await PIXI.live2d.Live2DModel.from(modelPath);
+
+                currentModel = model;
+                app.stage.addChild(model);
+
+                // Función para ajustar el tamaño/escala basado en la ventana
+                const resizeModel = () => {
+                    // Usar internalModel para evitar distorsiones
+                    const unscaledWidth = model.internalModel.width;
+                    const unscaledHeight = model.internalModel.height;
+
+                    const scaleX = window.innerWidth / unscaledWidth;
+                    const scaleY = window.innerHeight / unscaledHeight;
+
+                    // Ajustar para que quepa en pantalla, dejando un margen
+                    const scale = Math.min(scaleX, scaleY) * 0.8;
+
+                    model.scale.set(scale);
+
+                    // Centrar modelo
+                    model.x = window.innerWidth / 2;
+                    model.y = (window.innerHeight / 2) + (unscaledHeight * scale * 0.2); // Pequeño ajuste en Y
+
+                    // Punto de anclaje en el centro
+                    model.anchor.set(0.5, 0.5);
+                };
+
+                // Resize inicial
+                resizeModel();
+
+                // Manejar redimensionamiento de ventana
+                window.addEventListener('resize', resizeModel);
+
+                // El seguimiento del cursor (Eye/Head tracking) es automático en pixi-live2d-display
+
+                // Ocultar loading y mostrar UI
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('ui-container').style.display = 'block';
+
+                console.log("Modelo cargado exitosamente.");
+
+                // Mapear botones a animaciones ("motions")
+                // En xch001_01.model3.json, las motions no están en un grupo nombrado (la llave es "")
+                document.getElementById('btn-touch1').addEventListener('click', () => {
+                    console.log("Trigger motion: touch1 (index 0)");
+                    model.motion('', 0); // motion('', index)
+                });
+
+                document.getElementById('btn-idle').addEventListener('click', () => {
+                    console.log("Trigger motion: idle (index 1)");
+                    model.motion('', 1);
+                });
+
+                document.getElementById('btn-touch2').addEventListener('click', () => {
+                    console.log("Trigger motion: touch2 (index 2)");
+                    model.motion('', 2);
+                });
+
+            } catch (error) {
+                console.error("Error al cargar el modelo:", error);
+                document.getElementById('loading').innerText = "Error al cargar el modelo. Revisa la consola.";
+                document.getElementById('loading').style.color = "red";
+            }
+        }
+
+        // Arrancar
+        init();
+    </script>
+</body>
+</html>
