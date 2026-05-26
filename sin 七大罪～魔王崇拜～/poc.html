@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0+ PoC</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: sans-serif;
+            color: white;
+        }
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+        }
+        button {
+            padding: 10px 15px;
+            margin-right: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+
+    <!-- PixiJS 6.x -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Live2D Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (Cubism 4 bundle) -->
+    <script>
+        // Ensure PIXI is globally accessible for pixi-live2d-display
+        window.PIXI = PIXI;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="ui-container">
+        <button id="btn-touch1">Motion: Touch 1</button>
+        <button id="btn-touch2">Motion: Touch 2</button>
+        <button id="btn-idle">Motion: Idle</button>
+    </div>
+
+    <script>
+        (async function main() {
+            // Inicializar la aplicación PixiJS
+            const app = new PIXI.Application({
+                view: document.getElementById('canvas'),
+                autoStart: true,
+                resizeTo: window,
+                backgroundColor: 0x333333,
+                resolution: window.devicePixelRatio || 1
+            });
+            document.body.appendChild(app.view);
+
+            // Modelo que queremos cargar
+            const modelUrl = 'xch001_01/xch001_01.model3.json';
+
+            try {
+                // Cargar el modelo Live2D
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+                // Configurar posición y tamaño
+                app.stage.addChild(model);
+
+                const resizeModel = () => {
+                    const scaleX = window.innerWidth / model.internalModel.width;
+                    const scaleY = window.innerHeight / model.internalModel.height;
+
+                    // Escalar el modelo para que encaje, pero manteniendo las proporciones
+                    const scale = Math.min(scaleX, scaleY) * 0.9;
+                    model.scale.set(scale);
+
+                    model.x = window.innerWidth / 2 - (model.internalModel.width * scale) / 2;
+                    model.y = window.innerHeight / 2 - (model.internalModel.height * scale) / 2 + 100;
+                };
+
+                resizeModel();
+                window.addEventListener('resize', resizeModel);
+
+                // Tracking del cursor
+                // En pixi-live2d-display, el focus (eye/head tracking) es automático.
+
+                // Configurar interacciones manuales (botones)
+                // Utilizamos groupName = '' ya que las animaciones están en un grupo sin nombre en el json
+                document.getElementById('btn-touch1').addEventListener('click', () => {
+                    model.motion('', 0); // touch1
+                });
+
+                document.getElementById('btn-idle').addEventListener('click', () => {
+                    model.motion('', 1); // idle
+                });
+
+                document.getElementById('btn-touch2').addEventListener('click', () => {
+                    model.motion('', 2); // touch2
+                });
+
+                // También se puede responder a clicks en el modelo
+                model.on('pointerdown', (e) => {
+                    model.motion('', 0);
+                });
+                // Para que reciba eventos de pointer
+                model.interactive = true;
+
+            } catch (error) {
+                console.error("Error al cargar el modelo Live2D:", error);
+            }
+        })();
+    </script>
+</body>
+</html>
