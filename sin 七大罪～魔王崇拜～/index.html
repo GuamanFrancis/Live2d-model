@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Web Rendering PoC - Cubism 4.0+</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333; /* Fondo neutro para resaltar el modelo */
+            font-family: sans-serif;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-layer {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            z-index: 20;
+        }
+    </style>
+    <!-- 1. PixiJS (Versión 6.x recomendada para mayor estabilidad con WebGL/headless testing) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.10/dist/browser/pixi.min.js"></script>
+    <script>
+        // Exponer PIXI globalmente para que pixi-live2d-display lo detecte
+        window.PIXI = PIXI;
+    </script>
+
+    <!-- 2. Cubism Core (Requerido para modelos SDK 3 y 4) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- 3. pixi-live2d-display (Bundle específico para Cubism 4) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="loading">Cargando Modelo...</div>
+    <div id="canvas-container">
+        <canvas id="live2d-canvas"></canvas>
+    </div>
+
+    <div id="ui-layer" style="display: none;">
+        <button id="btn-motion-1">Animación 1</button>
+        <button id="btn-motion-2">Animación 2</button>
+        <button id="btn-motion-3">Animación 3</button>
+    </div>
+
+    <script>
+        // Importar Live2DModel desde la librería expuesta globalmente por el bundle de cubism4
+        const { Live2DModel } = PIXI.live2d;
+
+        // URL del modelo. Nota: Las carpetas con caracteres especiales o espacios deben funcionar en entornos locales
+        // si se sirven correctamente, pero es buena práctica codificar la URL base si es necesario.
+        const modelUrl = 'xch001_01/xch001_01.model3.json';
+
+        let app;
+        let model;
+
+        async function init() {
+            const canvas = document.getElementById('live2d-canvas');
+
+            // Inicializar la aplicación PixiJS
+            app = new PIXI.Application({
+                view: canvas,
+                autoStart: true,
+                resizeTo: window, // Escalar automáticamente con la ventana
+                backgroundAlpha: 0 // Fondo transparente para el canvas
+            });
+
+            try {
+                // Cargar el modelo de forma asíncrona
+                model = await Live2DModel.from(modelUrl);
+
+                // Añadir el modelo a la escena
+                app.stage.addChild(model);
+
+                // Configurar escala y posición inicial
+                resizeModel();
+
+                // Escuchar el evento de redimensionado de la ventana
+                window.addEventListener('resize', resizeModel);
+
+                // Ocultar mensaje de carga y mostrar UI
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('ui-layer').style.display = 'flex';
+
+                // Configurar botones de animación
+                setupButtons();
+
+                // pixi-live2d-display maneja el seguimiento del ratón (eye/head tracking) automáticamente por defecto
+                // cuando el modelo se añade al stage y se mueve el ratón sobre el canvas.
+                console.log("Modelo cargado exitosamente.");
+
+            } catch (error) {
+                console.error("Error al cargar el modelo:", error);
+                document.getElementById('loading').innerText = "Error al cargar el modelo.";
+            }
+        }
+
+        function resizeModel() {
+            if (!model) return;
+
+            // Calcular escala basada en el tamaño real interno del modelo para evitar distorsiones
+            const scaleX = window.innerWidth / model.internalModel.width;
+            const scaleY = window.innerHeight / model.internalModel.width; // Usamos width para mantener proporción
+
+            // Usar un factor de escala que se adapte mejor a la pantalla
+            // Generalmente queremos que el modelo quepa en la altura o al menos una porción razonable
+            const targetScale = Math.min(
+                window.innerWidth / model.internalModel.width,
+                window.innerHeight / model.internalModel.height
+            ) * 0.9; // 90% del tamaño disponible para dar margen
+
+            model.scale.set(targetScale);
+
+            // Centrar el modelo
+            model.x = (window.innerWidth - model.internalModel.width * targetScale) / 2;
+            model.y = (window.innerHeight - model.internalModel.height * targetScale) / 2;
+        }
+
+        function setupButtons() {
+            // El JSON del modelo define animaciones en el grupo vacío ""
+            // xch001_01.model3.json -> "Motions": { "": [ ... ] }
+
+            document.getElementById('btn-motion-1').addEventListener('click', () => {
+                // Dispara la animación en el índice 0 ("touch1")
+                model.motion('', 0);
+            });
+
+            document.getElementById('btn-motion-2').addEventListener('click', () => {
+                // Dispara la animación en el índice 1 ("idle")
+                model.motion('', 1);
+            });
+
+            document.getElementById('btn-motion-3').addEventListener('click', () => {
+                // Dispara la animación en el índice 2 ("touch2")
+                model.motion('', 2);
+            });
+        }
+
+        // Iniciar la aplicación
+        init();
+    </script>
+</body>
+</html>
