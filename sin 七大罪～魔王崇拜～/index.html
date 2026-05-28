@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC - sin 七大罪</title>
+    <!-- Include PixiJS (6.5.10 recommended for headless WebGL support) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Required to expose PIXI globally for the Live2D display plugin -->
+    <script>
+        window.PIXI = PIXI;
+    </script>
+
+    <!-- Include Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- Include pixi-live2d-display (cubism4 bundle) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-family: sans-serif;
+            background: rgba(0,0,0,0.5);
+            padding: 15px;
+            border-radius: 8px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui-container">
+        <h2>Live2D Viewer PoC</h2>
+        <p>Modelo: xch001_01</p>
+        <p>Interacción: Sigue el cursor automáticamente</p>
+        <p>Haz clic en el modelo para reproducir animación</p>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+
+        // Initialize PixiJS Application
+        const app = new PIXI.Application({
+            view: canvas,
+            autoStart: true,
+            resizeTo: window,
+            backgroundColor: 0x333333,
+            resolution: window.devicePixelRatio || 1
+        });
+
+        // The path to the model3.json file
+        // NOTE: If serving from root, the path needs to correctly encode spaces and special characters.
+        // Assuming this HTML is inside "sin 七大罪～魔王崇拜～" folder and the server is at the repository root.
+        const modelPath = "../sin 七大罪～魔王崇拜～/xch001_01/xch001_01.model3.json";
+
+        async function loadModel() {
+            try {
+                // Initialize the Live2D model
+                const model = await PIXI.live2d.Live2DModel.from(encodeURI(modelPath));
+
+                app.stage.addChild(model);
+
+                // Set scale based on unscaled dimensions
+                const scaleX = (innerWidth * 0.8) / model.internalModel.width;
+                const scaleY = (innerHeight * 0.8) / model.internalModel.height;
+                model.scale.set(Math.min(scaleX, scaleY));
+
+                // Position the model
+                model.x = innerWidth / 2 - (model.internalModel.width * model.scale.x) / 2;
+                model.y = innerHeight / 2 - (model.internalModel.height * model.scale.y) / 2;
+
+                // Make the model interactive to trigger motions
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // Array of motion indices to trigger on click
+                let currentMotionIndex = 0;
+
+                model.on('pointerdown', (hitEvent) => {
+                    // Trigger a motion. Assuming empty group name "" as per the model3.json
+                    model.motion('', currentMotionIndex);
+                    console.log('Triggered motion index:', currentMotionIndex);
+
+                    // Cycle through motions (0, 1, 2)
+                    currentMotionIndex = (currentMotionIndex + 1) % 3;
+                });
+
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    const newScaleX = (innerWidth * 0.8) / model.internalModel.width;
+                    const newScaleY = (innerHeight * 0.8) / model.internalModel.height;
+                    model.scale.set(Math.min(newScaleX, newScaleY));
+
+                    model.x = innerWidth / 2 - (model.internalModel.width * model.scale.x) / 2;
+                    model.y = innerHeight / 2 - (model.internalModel.height * model.scale.y) / 2;
+                });
+
+                console.log("Model loaded successfully");
+            } catch (error) {
+                console.error("Error loading Live2D model:", error);
+            }
+        }
+
+        // Start loading
+        loadModel();
+    </script>
+</body>
+</html>
