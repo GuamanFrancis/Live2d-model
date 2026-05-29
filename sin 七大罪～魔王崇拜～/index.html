@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0+ PoC</title>
+    <style>
+        body { margin: 0; padding: 0; background-color: #2c3e50; display: flex; flex-direction: column; align-items: center; height: 100vh; font-family: sans-serif; }
+        canvas { border: 2px solid #34495e; border-radius: 8px; margin-top: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        .controls { margin-top: 20px; display: flex; gap: 10px; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; background-color: #3498db; color: white; cursor: pointer; font-size: 16px; transition: background-color 0.2s; }
+        button:hover { background-color: #2980b9; }
+        #loading { color: white; margin-top: 20px; font-size: 18px; }
+    </style>
+
+    <!-- Dependencies for Live2D Render -->
+    <!-- PIXI JS (Prefer 6.x for stability in this context) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Expose PIXI globally for pixi-live2d-display -->
+    <script>window.PIXI = PIXI;</script>
+
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (Bundle with Cubism 4 support) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="loading">Cargando modelo Live2D...</div>
+    <canvas id="canvas"></canvas>
+    <div class="controls" id="controls" style="display: none;">
+        <button onclick="playMotion('touch1')">Animación: Touch 1</button>
+        <button onclick="playMotion('idle')">Animación: Idle</button>
+        <button onclick="playMotion('touch2')">Animación: Touch 2</button>
+    </div>
+
+    <script>
+        const app = new PIXI.Application({
+            view: document.getElementById('canvas'),
+            width: 800,
+            height: 600,
+            autoStart: true,
+            backgroundColor: 0x2c3e50,
+            resolution: window.devicePixelRatio || 1
+        });
+
+        const { Live2DModel } = PIXI.live2d;
+        let model;
+
+        async function init() {
+            try {
+                // Load the model. Using encodeURI to handle potential special chars in paths
+                // The folder structure in repo shows models inside their own named folders
+                const modelUrl = "xch001_01/xch001_01.model3.json";
+
+                model = await Live2DModel.from(modelUrl);
+
+                app.stage.addChild(model);
+
+                // Transformations
+                const scaleX = app.renderer.width / model.internalModel.width;
+                const scaleY = app.renderer.height / model.internalModel.height;
+                model.scale.set(Math.min(scaleX, scaleY) * 0.9); // Scale to fit, with margin
+
+                model.x = app.renderer.width / 2;
+                model.y = app.renderer.height / 2;
+                model.anchor.set(0.5, 0.5);
+
+                // Hide loading, show controls
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('controls').style.display = 'flex';
+
+                console.log("Model loaded successfully!");
+
+            } catch (error) {
+                console.error("Error loading the model:", error);
+                document.getElementById('loading').innerText = "Error al cargar el modelo.";
+            }
+        }
+
+        // Expose a function to play motions
+        function playMotion(motionName) {
+            if (!model) return;
+
+            // The JSON shows motions are under an empty group ""
+            // xch001_01.model3.json:
+            // "Motions": { "": [ {"File":"motions/touch1.motion3.json"}, ... ] }
+
+            let index = 0;
+            if (motionName === 'touch1') index = 0;
+            else if (motionName === 'idle') index = 1;
+            else if (motionName === 'touch2') index = 2;
+
+            model.motion('', index);
+        }
+
+        init();
+    </script>
+</body>
+</html>
