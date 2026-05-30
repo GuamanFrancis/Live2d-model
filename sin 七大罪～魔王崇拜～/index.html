@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC - SDK 4.0+</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #333; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; color: white; }
+        canvas { display: block; position: absolute; top: 0; left: 0; z-index: 1; }
+        #controls { position: absolute; bottom: 20px; z-index: 10; display: flex; gap: 10px; }
+        button { padding: 10px 15px; border: none; border-radius: 5px; background: #007bff; color: white; cursor: pointer; font-size: 16px; }
+        button:hover { background: #0056b3; }
+        #loading { position: absolute; z-index: 20; font-size: 24px; }
+    </style>
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- PixiJS -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.10/dist/browser/pixi.min.js"></script>
+    <!-- pixi-live2d-display -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="loading">Cargando modelo...</div>
+    <div id="controls">
+        <button onclick="playMotion('idle')">Idle</button>
+        <button onclick="playMotion('touch1')">Touch 1</button>
+        <button onclick="playMotion('touch2')">Touch 2</button>
+    </div>
+
+    <script>
+        // Expose PIXI globally for pixi-live2d-display
+        window.PIXI = PIXI;
+
+        const { Application } = PIXI;
+        const { Live2DModel } = PIXI.live2d;
+
+        let app;
+        let model;
+
+        async function init() {
+            // Create PixiJS Application
+            app = new Application({
+                width: window.innerWidth,
+                height: window.innerHeight,
+                backgroundColor: 0x333333,
+                resolution: window.devicePixelRatio || 1,
+                autoDensity: true,
+            });
+            document.body.appendChild(app.view);
+
+            try {
+                // Load the Live2D model
+                const modelUrl = encodeURI('xch001_01/xch001_01.model3.json');
+                model = await Live2DModel.from(modelUrl);
+
+                app.stage.addChild(model);
+
+                // Resize and position model
+                resizeModel();
+
+                // Hide loading text
+                document.getElementById('loading').style.display = 'none';
+
+                // Listen to window resize
+                window.addEventListener('resize', () => {
+                    app.renderer.resize(window.innerWidth, window.innerHeight);
+                    resizeModel();
+                });
+
+                // Eye and head tracking is automatically enabled out-of-the-box in pixi-live2d-display.
+
+            } catch (error) {
+                console.error("Error loading model:", error);
+                document.getElementById('loading').innerText = 'Error al cargar el modelo.';
+            }
+        }
+
+        function resizeModel() {
+            if (!model) return;
+
+            // Use unscaled dimensions to avoid distortion
+            const scaleX = window.innerWidth / model.internalModel.width;
+            const scaleY = window.innerHeight / model.internalModel.height;
+            const scale = Math.min(scaleX, scaleY) * 0.9; // 90% of screen
+
+            model.scale.set(scale);
+
+            // Center the model
+            model.x = (window.innerWidth - model.internalModel.width * scale) / 2;
+            model.y = (window.innerHeight - model.internalModel.height * scale) / 2;
+        }
+
+        // Play motions defined in the model
+        function playMotion(motionName) {
+            if (!model) return;
+
+            // In this specific model (xch001_01), motions belong to the empty group ""
+            // Motions are an array: 0 = touch1, 1 = idle, 2 = touch2 based on model3.json
+            let index = 1; // default to idle
+            if (motionName === 'touch1') index = 0;
+            else if (motionName === 'touch2') index = 2;
+            else if (motionName === 'idle') index = 1;
+
+            // Trigger motion (groupName is "" for this model, and index is the position in the array)
+            model.motion("", index);
+        }
+
+        // Initialize application
+        init();
+    </script>
+</body>
+</html>
