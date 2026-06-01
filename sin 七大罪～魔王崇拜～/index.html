@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PoC Live2D - Arquitectura Senior</title>
+    <!-- PixiJS v6.5.10 (Recomendado para evitar errores de WebGL headless) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Cubism Core 4.0 -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display -->
+    <script>
+        // Exponer PIXI globalmente antes de cargar la librería
+        window.PIXI = PIXI;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #2c3e50; /* Color de fondo profesional */
+            font-family: sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui-layer">
+        <h3>Live2D PoC</h3>
+        <p>SDK 4.0+ / PixiJS / pixi-live2d-display</p>
+        <p><em>Haz clic en el modelo para probar animaciones.</em></p>
+    </div>
+    <script>
+        (async function main() {
+            // 1. Inicializar la aplicación PixiJS
+            const app = new PIXI.Application({
+                view: document.createElement('canvas'),
+                autoStart: true,
+                resizeTo: window,
+                backgroundColor: 0x2c3e50
+            });
+            document.body.appendChild(app.view);
+
+            // 2. Extraer la clase constructora
+            const { Live2DModel } = PIXI.live2d;
+
+            // Ruta al modelo. Ya que estamos sirviendo desde "sin 七大罪～魔王崇拜～", es relativo a esta carpeta.
+            const modelUrl = 'xch001_01/xch001_01.model3.json';
+
+            try {
+                // 3. Cargar de manera asíncrona el modelo Live2D
+                const model = await Live2DModel.from(modelUrl, { autoInteract: true });
+
+                // 4. Configurar el tamaño y posición
+                // Utilizamos el tamaño interno para evitar distorsiones
+                const resizeModel = () => {
+                    const scaleX = window.innerWidth / model.internalModel.width;
+                    const scaleY = window.innerHeight / model.internalModel.height;
+
+                    // Escalar preservando aspecto y dejando algo de margen
+                    model.scale.set(Math.min(scaleX, scaleY) * 0.9);
+
+                    // Centrar
+                    model.x = window.innerWidth / 2;
+                    model.y = window.innerHeight / 2 + (model.internalModel.height * model.scale.y * 0.1);
+                };
+
+                model.anchor.set(0.5, 0.5);
+                resizeModel();
+
+                // 5. Añadir al escenario
+                app.stage.addChild(model);
+
+                // 6. Configurar interacciones manuales
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // El head/eye tracking al puntero del mouse (cursor tracking)
+                // se activa de manera automática a través de la librería (autoInteract: true).
+
+                // Evento para disparar "motions" al hacer clic
+                model.on('pointertap', () => {
+                    console.log('Interacción detectada: ejecutando animación aleatoria.');
+                    // Ejecuta una animación del primer grupo que encuentre o la default
+                    model.motion('', Math.floor(Math.random() * 3));
+                });
+
+                // Reaccionar al redimensionamiento de ventana
+                window.addEventListener('resize', resizeModel);
+
+                console.log('Modelo cargado exitosamente.');
+            } catch (error) {
+                console.error('Error al cargar el modelo Live2D:', error);
+            }
+        })();
+    </script>
+</body>
+</html>
