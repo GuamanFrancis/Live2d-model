@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0+ PoC</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+    <!-- 1. Cargar PixiJS v6 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+    <!-- Exponer PIXI globalmente para pixi-live2d-display -->
+    <script>
+        window.PIXI = PIXI;
+    </script>
+    <!-- 2. Cargar Cubism Core (Requerido para SDK 4.0+) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- 3. Cargar pixi-live2d-display (Bundle de Cubism 4) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        (async function init() {
+            // Inicializar la aplicación PixiJS
+            const app = new PIXI.Application({
+                view: document.getElementById('canvas'),
+                autoStart: true,
+                resizeTo: window,
+                backgroundColor: 0x1a1a1a
+            });
+
+            // Definir la ruta del modelo (asegurando el encoding correcto)
+            // Usamos xch001_01 como ejemplo
+            const modelUrl = encodeURI('./xch001_01/xch001_01.model3.json');
+
+            try {
+                // Cargar el modelo Live2D
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+                // Añadir el modelo al escenario de PixiJS
+                app.stage.addChild(model);
+
+                // Ajustar el modelo a la pantalla
+                function resizeModel() {
+                    const scaleX = window.innerWidth / model.internalModel.width;
+                    const scaleY = window.innerHeight / model.internalModel.height;
+
+                    // Escalar manteniendo la proporción
+                    const scale = Math.min(scaleX, scaleY) * 0.9;
+                    model.scale.set(scale);
+
+                    // Centrar el modelo en la pantalla
+                    model.x = (window.innerWidth - model.internalModel.width * scale) / 2;
+                    model.y = (window.innerHeight - model.internalModel.height * scale) / 2;
+                }
+
+                // Llamar inicialmente y en cada redimensionamiento
+                resizeModel();
+                window.addEventListener('resize', resizeModel);
+
+                // Interacción: Ejecutar una animación al hacer click
+                // model.on('pointerdown', () => {
+                //    model.motion('', 0); // Ejecuta la primera animación disponible
+                // });
+                // En PixiJS v6:
+                model.interactive = true;
+                model.buttonMode = true;
+                model.on('pointerdown', () => {
+                    model.motion('', 0);
+                });
+
+                // El seguimiento del cursor (eye/head tracking) funciona automáticamente
+                // fuera de la caja con pixi-live2d-display, reaccionando a los movimientos del mouse.
+
+            } catch (error) {
+                console.error("Error al cargar el modelo Live2D:", error);
+            }
+        })();
+    </script>
+</body>
+</html>
