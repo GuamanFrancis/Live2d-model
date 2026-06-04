@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D WebGL PoC</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+    <!-- PixiJS v6 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+    <script>
+        // Expose PIXI globally for pixi-live2d-display
+        window.PIXI = PIXI;
+    </script>
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- pixi-live2d-display (Cubism 4 support) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        (async function main() {
+            const canvas = document.getElementById('canvas');
+
+            // Initialize PixiJS Application
+            const app = new PIXI.Application({
+                view: canvas,
+                resizeTo: window,
+                autoDensity: true,
+                resolution: window.devicePixelRatio || 1,
+                backgroundColor: 0x333333,
+            });
+
+            // Path to the .model3.json file
+            // Using encodeURI for safe loading if the path had special characters
+            const modelUrl = 'xch001_01/xch001_01.model3.json';
+
+            try {
+                // Load the Live2D Model
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+                app.stage.addChild(model);
+
+                // Enable interactivity for pointer events (motions on click)
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // Center the model in the canvas
+                model.anchor.set(0.5, 0.5);
+
+                const resizeModel = () => {
+                    model.x = app.renderer.width / 2;
+                    model.y = app.renderer.height / 2;
+
+                    // Calculate scale to fit the screen
+                    const scaleX = (app.renderer.width * 0.8) / model.internalModel.width;
+                    const scaleY = (app.renderer.height * 0.8) / model.internalModel.height;
+                    const scale = Math.min(scaleX, scaleY);
+
+                    model.scale.set(scale);
+                };
+
+                // Initial sizing and handling window resize
+                resizeModel();
+                window.addEventListener('resize', resizeModel);
+
+                // Trigger a specific motion when clicked
+                model.on('pointertap', () => {
+                    // Try to trigger a motion (use '' for the default group)
+                    // The motion index will randomly be picked if index is omitted or if
+                    // we pick a specific one like 0. Let's try 0 for testing.
+                    model.motion('', 0);
+                });
+
+                console.log("Live2D Model Loaded Successfully!");
+
+            } catch (error) {
+                console.error("Error loading Live2D model:", error);
+            }
+        })();
+    </script>
+</body>
+</html>
