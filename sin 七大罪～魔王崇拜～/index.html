@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC - PixiJS</title>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #333; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+    </style>
+    <!-- Load PixiJS v6 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Expose PIXI globally for pixi-live2d-display -->
+    <script>
+        window.PIXI = PIXI;
+    </script>
+
+    <!-- Load Cubism Core (required for SDK 4.0+ models) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- Load pixi-live2d-display (cubism4 bundle) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        (async function main() {
+            try {
+                const app = new PIXI.Application({
+                    view: document.getElementById('canvas'),
+                    autoStart: true,
+                    resizeTo: window,
+                    backgroundColor: 0x333333
+                });
+
+                // Path to the model
+                const modelUrl = 'xch001_01/xch001_01.model3.json';
+
+                // Load the model
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+                app.stage.addChild(model);
+
+                // Make model interactive for pointer events (clicks, etc.)
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // Set up resizing
+                function resize() {
+                    const scaleX = window.innerWidth / model.internalModel.width;
+                    const scaleY = window.innerHeight / model.internalModel.height;
+
+                    // Maintain aspect ratio, fit to screen height mostly, slightly smaller to see full body
+                    model.scale.set(Math.min(scaleX, scaleY) * 0.9);
+
+                    // Center the model using anchor
+                    model.anchor.set(0.5, 0.5);
+                    model.position.set(window.innerWidth / 2, window.innerHeight / 2 + (model.internalModel.height * model.scale.y * 0.1));
+                }
+
+                // Initial resize and listener
+                resize();
+                window.addEventListener('resize', resize);
+
+                // Handle clicks for motion playback
+                model.on('pointerdown', () => {
+                    // Start a random motion from the default group (empty string "")
+                    console.log('Triggering motion');
+                    // In the model3.json, the motion group is named "" (empty string)
+                    model.motion('', Math.floor(Math.random() * 3)); // There are 3 motions: touch1, idle, touch2
+                });
+
+                console.log('Live2D Model Loaded successfully');
+            } catch (error) {
+                console.error('Error loading Live2D model:', error);
+            }
+        })();
+    </script>
+</body>
+</html>
