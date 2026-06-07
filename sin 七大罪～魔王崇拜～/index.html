@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Model PoC</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #2c3e50;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-family: sans-serif;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Cargando Modelo...</div>
+    <div id="canvas-container"></div>
+
+    <!-- PixiJS v6.5.10 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+
+    <script>
+        // Ensure PIXI is exposed globally for pixi-live2d-display
+        window.PIXI = PIXI;
+
+        async function init() {
+            try {
+                // Initialize Pixi application
+                const app = new PIXI.Application({
+                    view: document.createElement('canvas'),
+                    autoStart: true,
+                    resizeTo: window,
+                    backgroundColor: 0x2c3e50,
+                    resolution: window.devicePixelRatio || 1,
+                    autoDensity: true
+                });
+
+                document.getElementById('canvas-container').appendChild(app.view);
+
+                // Load the Live2D model
+                const modelUrl = 'xch001_01/xch001_01.model3.json';
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+                app.stage.addChild(model);
+
+                // Configure interactions and model positioning
+                function resizeModel() {
+                    const canvasWidth = app.renderer.width / app.renderer.resolution;
+                    const canvasHeight = app.renderer.height / app.renderer.resolution;
+
+                    // Calculate scale to fit vertically while keeping aspect ratio
+                    const scaleX = canvasWidth / model.internalModel.width;
+                    const scaleY = canvasHeight / model.internalModel.height;
+
+                    // Fit within screen, maintaining aspect ratio
+                    const scale = Math.min(scaleX, scaleY) * 0.9; // 90% of screen height to leave some padding
+
+                    model.scale.set(scale);
+
+                    // Center the model using anchor
+                    model.anchor.set(0.5, 0.5);
+                    model.x = canvasWidth / 2;
+                    model.y = canvasHeight / 2;
+                }
+
+                // Initial resize and listen to window resize
+                resizeModel();
+                window.addEventListener('resize', resizeModel);
+
+                // Enable interactivity (mouse/touch events)
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // Motion triggering
+                let clickCount = 0;
+                model.on('pointerdown', (e) => {
+                    console.log('Model clicked!');
+                    // Cycle through motions based on the motions defined in xch001_01.model3.json
+                    const numMotions = 3;
+                    model.motion('', clickCount % numMotions);
+                    clickCount++;
+                });
+
+                // Remove loading text
+                document.getElementById('loading').style.display = 'none';
+                console.log('Model successfully loaded and initialized.');
+
+            } catch (error) {
+                console.error("Error loading Live2D model:", error);
+                document.getElementById('loading').textContent = 'Error al cargar el modelo';
+            }
+        }
+
+        // Start initialization when the DOM is ready
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
