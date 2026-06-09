@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Web Viewer - PoC</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #2c3e50; /* Un color de fondo profesional */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+        }
+        #loading {
+            position: absolute;
+            color: white;
+            font-family: sans-serif;
+            font-size: 1.5rem;
+        }
+    </style>
+    <!-- PixiJS 6.5.10 - Preferido para headless Playwright / SwiftShader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Live2D Cubism Core - Requerido para modelos SDK 4.0+ -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (Cubism 4 build) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="loading">Cargando modelo Live2D...</div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // Exponer PIXI globalmente para que pixi-live2d-display lo detecte
+        window.PIXI = PIXI;
+
+        const { Application } = PIXI;
+        const { Live2DModel } = PIXI.live2d;
+
+        (async function main() {
+            try {
+                // Inicializar aplicación PixiJS
+                const app = new Application({
+                    view: document.getElementById('canvas'),
+                    autoStart: true,
+                    resizeTo: window,
+                    backgroundColor: 0x2c3e50,
+                    resolution: window.devicePixelRatio || 1,
+                });
+
+                // Ruta al modelo. Se usa encodeURI para manejar caracteres especiales y espacios.
+                const modelPath = encodeURI('sin 七大罪～魔王崇拜～/xch001_01/xch001_01.model3.json');
+
+                // Cargar el modelo
+                const model = await Live2DModel.from(modelPath);
+
+                // Ocultar mensaje de carga
+                document.getElementById('loading').style.display = 'none';
+
+                // Añadir el modelo al escenario
+                app.stage.addChild(model);
+
+                // Función para ajustar el tamaño y posición
+                function resizeModel() {
+                    // Usar las dimensiones internas del modelo para calcular la escala
+                    const scaleX = innerWidth / model.internalModel.width;
+                    const scaleY = innerHeight / model.internalModel.height;
+
+                    // Escalar manteniendo la relación de aspecto, ocupando un buen porcentaje de la pantalla
+                    const scale = Math.min(scaleX, scaleY) * 0.9;
+                    model.scale.set(scale);
+
+                    // Establecer el ancla en el centro para facilitar el posicionamiento
+                    model.anchor.set(0.5, 0.5);
+
+                    // Centrar en la pantalla
+                    model.x = innerWidth / 2;
+                    model.y = innerHeight / 2;
+                }
+
+                // Ajustar tamaño inicial y suscribirse a cambios de tamaño de ventana
+                resizeModel();
+                window.addEventListener('resize', resizeModel);
+
+                // Habilitar interacción y seguimiento del cursor
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // El seguimiento del cursor se habilita automáticamente en pixi-live2d-display,
+                // solo necesitamos asegurarnos de que la interacción esté activa.
+
+                // Habilitar ejecución de "motions" (animaciones) al hacer clic
+                model.on('pointertap', () => {
+                    // Intentar ejecutar una animación aleatoria
+                    // El modelo tiene motions en el grupo "" (cadena vacía)
+                    // Como vimos en el .model3.json:
+                    // "Motions": { "": [ ... ] }
+
+                    // En pixi-live2d-display, podemos llamar a motion con un nombre de grupo
+                    // Si pasamos una cadena vacía, buscará en ese grupo
+                    // o podemos simplemente llamar a motion sin argumentos o con un grupo específico si lo conocemos
+
+                    // Para mayor robustez, imprimimos los grupos disponibles
+                    console.log("Motion groups:", Object.keys(model.internalModel.motionManager.motionGroups));
+
+                    // Disparamos una animación al azar del grupo por defecto o el primero que encontremos
+                    const groups = Object.keys(model.internalModel.motionManager.motionGroups);
+                    const targetGroup = groups.length > 0 ? groups[0] : '';
+
+                    console.log(`Triggering motion from group: '${targetGroup}'`);
+                    model.motion(targetGroup);
+                });
+
+                console.log("Live2D Model loaded successfully.");
+            } catch (error) {
+                console.error("Error loading Live2D model:", error);
+                document.getElementById('loading').innerText = "Error cargando el modelo: " + error.message;
+            }
+        })();
+    </script>
+</body>
+</html>
