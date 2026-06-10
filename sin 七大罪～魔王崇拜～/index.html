@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0+ PoC</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+    <!-- PixiJS v6.5.10 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Live2D Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- Setup PIXI globally for pixi-live2d-display -->
+    <script>
+        window.PIXI = PIXI;
+    </script>
+
+    <!-- pixi-live2d-display -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <script>
+        (async function() {
+            // Inicializar la aplicación Pixi
+            const app = new PIXI.Application({
+                view: document.createElement('canvas'),
+                resizeTo: window,
+                autoDensity: true,
+                resolution: window.devicePixelRatio || 1,
+                backgroundColor: 0x333333
+            });
+            document.body.appendChild(app.view);
+
+            // Importar la clase Live2DModel de la librería
+            const { Live2DModel } = PIXI.live2d;
+
+            // Ruta del modelo (se codifica para evitar problemas con espacios o caracteres especiales)
+            const modelUrl = encodeURI("xch001_01/xch001_01.model3.json");
+
+            try {
+                // Cargar el modelo
+                const model = await Live2DModel.from(modelUrl);
+
+                // Configurar anclaje para centrar más fácilmente
+                model.anchor.set(0.5, 0.5);
+
+                // Función para ajustar el tamaño y posición del modelo al redimensionar la ventana
+                const resizeModel = () => {
+                    const scaleX = app.renderer.width / model.internalModel.width;
+                    const scaleY = app.renderer.height / model.internalModel.height;
+
+                    // Escalar para que se ajuste a la pantalla (un 80% de altura, o ancho, lo que sea menor)
+                    const scale = Math.min(scaleX, scaleY) * 0.8;
+                    model.scale.set(scale);
+
+                    // Posicionar en el centro
+                    model.x = app.renderer.width / 2;
+                    model.y = app.renderer.height / 2;
+                };
+
+                resizeModel();
+                window.addEventListener('resize', resizeModel);
+
+                // Añadir el modelo a la escena
+                app.stage.addChild(model);
+
+                // Habilitar interacciones
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // Animaciones en click
+                model.on('pointerdown', () => {
+                    // Seleccionamos un índice de animación aleatorio (generalmente el grupo es "" para animaciones root, o "tap_body")
+                    // En nuestro modelo, el grupo principal de motions es "".
+                    const motionGroups = Object.keys(model.internalModel.motionManager.motionGroups);
+                    let group = "";
+                    if (motionGroups.length > 0) {
+                        group = motionGroups.includes("") ? "" : motionGroups[0];
+                    }
+
+                    const motions = model.internalModel.motionManager.motionGroups[group];
+                    if (motions && motions.length > 0) {
+                        const randomMotion = Math.floor(Math.random() * motions.length);
+                        console.log(`Reproduciendo animación: grupo "${group}", índice ${randomMotion}`);
+                        model.motion(group, randomMotion);
+                    }
+                });
+
+                console.log("Modelo Live2D cargado exitosamente.");
+            } catch (error) {
+                console.error("Error al cargar el modelo:", error);
+            }
+        })();
+    </script>
+</body>
+</html>
