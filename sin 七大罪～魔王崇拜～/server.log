@@ -1,0 +1,7 @@
+127.0.0.1 - - [10/Jun/2026 04:02:36] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [10/Jun/2026 04:02:37] "GET /xch001_01/xch001_01.model3.json HTTP/1.1" 200 -
+127.0.0.1 - - [10/Jun/2026 04:02:37] "GET /xch001_01/textures/texture_00.png HTTP/1.1" 200 -
+127.0.0.1 - - [10/Jun/2026 04:02:37] "GET /xch001_01/textures/xch001_01_rev.png HTTP/1.1" 200 -
+127.0.0.1 - - [10/Jun/2026 04:02:37] "GET /xch001_01/xch001_01.moc3 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Jun/2026 04:02:37] code 404, message File not found
+127.0.0.1 - - [10/Jun/2026 04:02:37] "GET /favicon.ico HTTP/1.1" 404 -
