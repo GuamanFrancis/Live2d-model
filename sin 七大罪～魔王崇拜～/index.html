@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0 - PoC Renderizador</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #333;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+    <!-- 1. Cargar Live2D Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- 2. Cargar PixiJS (v6.5.10 recomendada para máxima compatibilidad con WebGL) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Exponer PIXI de forma global para que el plugin lo detecte -->
+    <script>
+        window.PIXI = PIXI;
+    </script>
+
+    <!-- 3. Cargar pixi-live2d-display (Bundle exclusivo para Cubism 4) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <script>
+        // Configuración principal de PixiJS
+        const app = new PIXI.Application({
+            view: document.createElement('canvas'),
+            resizeTo: window,
+            autoStart: true,
+            backgroundColor: 0x333333,
+            resolution: window.devicePixelRatio || 1,
+        });
+
+        document.getElementById('canvas-container').appendChild(app.view);
+
+        async function initLive2D() {
+            try {
+                // Ruta al archivo del modelo .model3.json
+                // Se utiliza encodeURI para evitar problemas con caracteres especiales o espacios si los hubiere
+                const modelUrl = encodeURI('xch001_01/xch001_01.model3.json');
+
+                // Cargar el modelo
+                console.log("Cargando modelo...");
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+                // Configurar anclaje al centro para facilitar el posicionamiento
+                model.anchor.set(0.5, 0.5);
+
+                // Función para ajustar el tamaño y la posición del modelo al cambiar el tamaño de la ventana
+                const resizeModel = () => {
+                    const scaleX = app.screen.width / model.internalModel.width;
+                    const scaleY = app.screen.height / model.internalModel.height;
+
+                    // Ajustar escala para que el modelo se vea bien y mantenga la proporción
+                    const scale = Math.min(scaleX, scaleY) * 0.9;
+                    model.scale.set(scale);
+
+                    // Centrar en pantalla
+                    model.position.set(app.screen.width / 2, app.screen.height / 2 + (model.internalModel.height * scale * 0.1));
+                };
+
+                // Llamada inicial y evento de redimensión
+                resizeModel();
+                window.addEventListener('resize', resizeModel);
+
+                // Añadir al escenario
+                app.stage.addChild(model);
+
+                // Habilitar interacción para el puntero (necesario para el tracking y clics)
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // Seguimiento del cursor (Eye/Head tracking) viene activado por defecto en pixi-live2d-display.
+                // Reaccionará automáticamente al movimiento del ratón sobre el canvas.
+
+                // Configurar evento de clic para disparar una animación aleatoria
+                model.on('pointerdown', (e) => {
+                    console.log("Clic detectado. Ejecutando animación...");
+                    // Dispara una animación del grupo de motions predeterminado (cadena vacía)
+                    // Si el modelo tiene diferentes grupos (e.g., 'TapBody'), se puede especificar
+                    model.motion('', Math.floor(Math.random() * 3)); // Intenta reproducir una de las primeras 3 animaciones
+                });
+
+                console.log("Modelo Live2D cargado y listo.");
+            } catch (error) {
+                console.error("Error al cargar el modelo Live2D:", error);
+            }
+        }
+
+        // Inicializar
+        initLive2D();
+    </script>
+</body>
+</html>
