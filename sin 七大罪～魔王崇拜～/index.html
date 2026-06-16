@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PoC Live2D - Arquitectura y Rendimiento</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+    <!-- PixiJS v6 -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.10/dist/browser/pixi.min.js"></script>
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- pixi-live2d-display -->
+    <script>
+        window.PIXI = PIXI;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <script>
+        const app = new PIXI.Application({
+            view: document.createElement('canvas'),
+            autoStart: true,
+            resizeTo: window,
+            backgroundColor: 0x333333
+        });
+        document.body.appendChild(app.view);
+
+        async function init() {
+            // Se utiliza encodeURI para asegurar la carga correcta de la ruta con caracteres especiales y espacios
+            const modelUrl = encodeURI("xch001_01/xch001_01.model3.json");
+
+            try {
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+                app.stage.addChild(model);
+
+                // Configurar anclaje y posición central
+                model.anchor.set(0.5, 0.5);
+                model.x = app.screen.width / 2;
+                model.y = app.screen.height / 2;
+
+                // Escalar basándose en las dimensiones originales no escaladas para evitar distorsiones
+                const scaleX = app.screen.width / model.internalModel.width;
+                const scaleY = app.screen.height / model.internalModel.height;
+                // Mantener proporción (Fit)
+                model.scale.set(Math.min(scaleX, scaleY) * 0.8);
+
+                // Configuración de interacciones (Eye/Head tracking es automático)
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // Al hacer clic o tocar el modelo, ejecutar una moción de forma secuencial o aleatoria
+                model.on("pointertap", () => {
+                    // Si el modelo tiene motions en el grupo vacío ''
+                    model.motion('', Math.floor(Math.random() * 3));
+                });
+
+                // Reajuste responsivo en el redimensionamiento de ventana
+                window.addEventListener('resize', () => {
+                    model.x = app.screen.width / 2;
+                    model.y = app.screen.height / 2;
+                    const scX = app.screen.width / model.internalModel.width;
+                    const scY = app.screen.height / model.internalModel.height;
+                    model.scale.set(Math.min(scX, scY) * 0.8);
+                });
+
+            } catch (error) {
+                console.error("Error al cargar el modelo Live2D:", error);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
