@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Web PoC - Consultoría Técnica</title>
+    <link rel="stylesheet" href="css/styles.css">
+
+    <!-- PixiJS v6 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (Cubism 4 support) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <!-- Setup PixiJS globals for the Live2D plugin -->
+    <script>
+        window.PIXI = PIXI;
+    </script>
+
+    <!-- Carga de nuestra aplicación -->
+    <script src="js/Live2DApp.js"></script>
+
+    <script>
+        // Inicializar la aplicación cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', () => {
+            const app = new Live2DApp();
+            // Ruta al personaje de prueba (codificada para evitar problemas con espacios/caracteres)
+            app.loadModel(encodeURI('xch001_01/xch001_01.model3.json'));
+        });
+    </script>
+</body>
+</html>
