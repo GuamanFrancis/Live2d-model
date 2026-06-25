@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D WebGL PoC - sin 七大罪～魔王崇拜～</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #333; }
+        canvas { display: block; }
+    </style>
+
+    <!-- 1. Cubism Core (Para SDK 4.0+) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- 2. PixiJS (Versión 6 preferida para asegurar compatibilidad en headless/WebGL) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Asegurar que PIXI es global para pixi-live2d-display -->
+    <script>
+        window.PIXI = PIXI;
+    </script>
+
+    <!-- 3. pixi-live2d-display (Bundle Cubism 4 sin versión beta explícita para estabilidad) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+
+</head>
+<body>
+    <script>
+        (async function() {
+            // Inicializar la aplicación PixiJS
+            const app = new PIXI.Application({
+                view: document.createElement('canvas'),
+                autoStart: true,
+                resizeTo: window,
+                backgroundColor: 0x333333
+            });
+            document.body.appendChild(app.view);
+
+            // Obtener la clase Live2DModel del namespace global (agregado por pixi-live2d-display)
+            const { Live2DModel } = PIXI.live2d;
+
+            try {
+                // Modelo seleccionado del directorio del proyecto (SDK 4.0 - .model3.json)
+                const modelUrl = 'xch001_01/xch001_01.model3.json';
+
+                // Cargar el modelo
+                console.log("Cargando modelo desde:", modelUrl);
+                const model = await Live2DModel.from(modelUrl);
+
+                // Agregar el modelo al escenario (stage)
+                app.stage.addChild(model);
+
+                // Configurar posicionamiento y escala
+                // Para mantener la consistencia al redimensionar, usamos el tamaño interno original
+                const scaleX = window.innerWidth / model.internalModel.width;
+                const scaleY = window.innerHeight / model.internalModel.height;
+                const scale = Math.min(scaleX, scaleY) * 0.8; // Escalar al 80% de la ventana
+
+                model.scale.set(scale);
+
+                // Centrar el modelo de forma sencilla aprovechando PIXI.DisplayObject
+                model.anchor.set(0.5, 0.5);
+                model.x = window.innerWidth / 2;
+                model.y = window.innerHeight / 2 + 100; // Ajuste vertical
+
+                // Habilitar interacción para poder hacer clic
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // Evento: Al hacer clic, ejecutar una animación (motion) al azar
+                model.on('pointerdown', () => {
+                    console.log("Modelo clickeado, activando motion.");
+                    // En este modelo, las animaciones están en el grupo vacío "" (según el json)
+                    const motions = model.internalModel.motionManager.motionGroups[''] || [];
+                    if (motions.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * motions.length);
+                        // Trigger motion
+                        model.motion('', randomIndex);
+                    }
+                });
+
+                // Redimensionar automáticamente (Responsive)
+                window.addEventListener('resize', () => {
+                    const newScaleX = window.innerWidth / model.internalModel.width;
+                    const newScaleY = window.innerHeight / model.internalModel.height;
+                    model.scale.set(Math.min(newScaleX, newScaleY) * 0.8);
+
+                    model.x = window.innerWidth / 2;
+                    model.y = window.innerHeight / 2 + 100;
+                });
+
+                console.log("Modelo cargado y listo.");
+
+            } catch (error) {
+                console.error("Error cargando el modelo Live2D:", error);
+            }
+        })();
+    </script>
+</body>
+</html>
