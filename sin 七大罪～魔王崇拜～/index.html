@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0+ PoC</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+    <!-- PixiJS v6.x -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.10/dist/browser/pixi.min.js"></script>
+    <script>
+        // Expose PIXI globally for pixi-live2d-display
+        window.PIXI = PIXI;
+    </script>
+
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (Cubism 4 bundle) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <script>
+        (async function main() {
+            // Inicializar la aplicación PixiJS
+            const app = new PIXI.Application({
+                view: document.createElement('canvas'),
+                resizeTo: window,
+                autoDensity: true,
+                backgroundColor: 0x333333,
+            });
+            document.body.appendChild(app.view);
+
+            try {
+                // Cargar el modelo Live2D
+                // La ruta incluye encodeURI para manejar caracteres especiales o espacios si los hubiera,
+                // aunque en este caso el modelo está en xch001_01/xch001_01.model3.json
+                const modelUrl = encodeURI('xch001_01/xch001_01.model3.json');
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+                // Configurar el modelo para que esté centrado
+                model.anchor.set(0.5, 0.5);
+
+                // Añadir el modelo al escenario
+                app.stage.addChild(model);
+
+                // Ajustar el tamaño y posición iniciales
+                function resizeModel() {
+                    const scaleX = app.screen.width / model.internalModel.width;
+                    const scaleY = app.screen.height / model.internalModel.height;
+
+                    // Mantener la relación de aspecto usando el menor de los dos factores de escala
+                    const scale = Math.min(scaleX, scaleY) * 0.9; // 90% del tamaño de la pantalla
+
+                    model.scale.set(scale);
+                    model.x = app.screen.width / 2;
+                    model.y = app.screen.height / 2;
+                }
+
+                // Ajustar en el primer renderizado y en el redimensionado de la ventana
+                resizeModel();
+                window.addEventListener('resize', resizeModel);
+
+                // Habilitar interacciones
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // Sistema de interacción: ejecutar animación al hacer clic
+                model.on('pointerdown', (e) => {
+                    // Seleccionar una animación aleatoria del grupo por defecto (cuyo nombre es "")
+                    const motions = model.internalModel.motionManager.motionGroups[''] || [];
+                    if (motions.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * motions.length);
+                        // El nombre del grupo es ''
+                        model.motion('', randomIndex);
+                    }
+                });
+
+            } catch (error) {
+                console.error('Error al cargar el modelo Live2D:', error);
+            }
+        })();
+    </script>
+</body>
+</html>
