@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC - PixiJS + pixi-live2d-display</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #2c3e50; /* Fondo oscuro para contrastar con el modelo */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-family: sans-serif;
+            pointer-events: none;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+
+    <!-- PixiJS v6 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Cubism Core -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (Cubism 4 support) -->
+    <script>
+        // pixi-live2d-display expects PIXI to be globally available
+        window.PIXI = PIXI;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+
+</head>
+<body>
+
+    <div id="ui-layer">
+        <h2>Live2D PoC</h2>
+        <p>Modelo: xch001_01</p>
+        <p>Status: <span id="status">Cargando...</span></p>
+        <p><i>Haz clic en el modelo para disparar animaciones.</i></p>
+    </div>
+
+    <script>
+        // Configuración inicial de la aplicación PixiJS
+        const app = new PIXI.Application({
+            width: window.innerWidth,
+            height: window.innerHeight,
+            autoStart: true,
+            transparent: true,
+            resolution: window.devicePixelRatio || 1
+        });
+        document.body.appendChild(app.view);
+
+        // Clase Wrapper para encapsular la lógica del modelo Live2D
+        class Live2DCharacter {
+            constructor(modelPath, appInstance) {
+                this.modelPath = modelPath;
+                this.app = appInstance;
+                this.model = null;
+                this.init();
+            }
+
+            async init() {
+                try {
+                    // Carga asíncrona del modelo. La librería maneja moc3, texturas y físicas.
+                    // Codificamos la URI por si hay caracteres especiales en las rutas
+                    this.model = await PIXI.live2d.Live2DModel.from(encodeURI(this.modelPath));
+
+                    // Añadimos el modelo a la escena
+                    this.app.stage.addChild(this.model);
+
+                    // Configuración de visualización y posicionamiento
+                    this.setupDisplay();
+
+                    // Configuración de interacción (Eventos de ratón/táctiles)
+                    this.setupInteraction();
+
+                    document.getElementById('status').innerText = 'Modelo Cargado y Listo';
+                    document.getElementById('status').style.color = '#2ecc71';
+
+                } catch (error) {
+                    console.error("Error cargando el modelo Live2D:", error);
+                    document.getElementById('status').innerText = 'Error al cargar';
+                    document.getElementById('status').style.color = '#e74c3c';
+                }
+            }
+
+            setupDisplay() {
+                if (!this.model) return;
+
+                // Anclamos al centro para facilitar el posicionamiento
+                this.model.anchor.set(0.5, 0.5);
+
+                // Posicionamos en el centro de la pantalla
+                this.model.x = this.app.screen.width / 2;
+                this.model.y = this.app.screen.height / 2;
+
+                // Calculamos la escala para que encaje en la pantalla basándonos en sus dimensiones originales
+                const scaleX = this.app.screen.width / this.model.internalModel.width;
+                const scaleY = this.app.screen.height / this.model.internalModel.height;
+
+                // Usamos el menor valor para que quepa completo, o ajustamos según se prefiera (ej. llenar alto)
+                const scale = Math.min(scaleX, scaleY) * 0.9; // 90% de la pantalla para dar margen
+                this.model.scale.set(scale, scale);
+            }
+
+            setupInteraction() {
+                if (!this.model) return;
+
+                // Habilitamos interacciones en PixiJS para este objeto
+                this.model.interactive = true;
+                this.model.buttonMode = true;
+
+                // Nota: El seguimiento de cursor (eye/head tracking) está habilitado por defecto
+                // en pixi-live2d-display. Se actualiza automáticamente basado en punteros globales.
+
+                // Evento de click/touch para disparar animaciones
+                this.model.on('pointertap', () => {
+                    // El modelo xch001_01.model3.json no define grupos de animaciones con nombre,
+                    // las tiene todas bajo un string vacío "".
+                    // Disparamos una animación aleatoria del grupo por defecto ("").
+
+                    const groupName = "";
+                    const motions = this.model.internalModel.motionManager.motionGroups[groupName];
+
+                    if (motions && motions.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * motions.length);
+                        console.log(`Disparando motion: índice ${randomIndex}`);
+                        this.model.motion(groupName, randomIndex);
+                    } else {
+                        console.log("No se encontraron motions configuradas en el JSON.");
+                    }
+                });
+            }
+
+            // Método para manejar redimensionamiento de ventana
+            resize() {
+                if(this.model) {
+                    this.model.x = this.app.screen.width / 2;
+                    this.model.y = this.app.screen.height / 2;
+
+                    const scaleX = this.app.screen.width / this.model.internalModel.width;
+                    const scaleY = this.app.screen.height / this.model.internalModel.height;
+                    const scale = Math.min(scaleX, scaleY) * 0.9;
+                    this.model.scale.set(scale, scale);
+                }
+            }
+        }
+
+        // Instanciamos nuestro wrapper con la ruta relativa al modelo
+        // Usamos el modelo xch001_01 proporcionado en el repositorio
+        const character = new Live2DCharacter('xch001_01/xch001_01.model3.json', app);
+
+        // Gestionar redimensionamiento de la ventana
+        window.addEventListener('resize', () => {
+            app.renderer.resize(window.innerWidth, window.innerHeight);
+            character.resize();
+        });
+
+    </script>
+</body>
+</html>
