@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC - Arquitectura de Software</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <!-- 1. Dependencias Base: PixiJS (v6) y Cubism Core -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- 2. Librería pixi-live2d-display (Bundle para Cubism 4+) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+
+    <script>
+        // Exponer PIXI de forma global, requerido por la librería en algunos entornos
+        window.PIXI = PIXI;
+        const { Live2DModel } = PIXI.live2d;
+
+        async function init() {
+            // Inicializar la aplicación de PixiJS
+            const app = new PIXI.Application({
+                view: document.createElement('canvas'),
+                autoDensity: true,
+                resizeTo: window,
+                backgroundColor: 0x333333
+            });
+            document.getElementById('canvas-container').appendChild(app.view);
+
+            // Archivo de modelo objetivo. Codificar URI por precaución
+            const modelUrl = encodeURI("xch001_01/xch001_01.model3.json");
+
+            try {
+                // Cargar el modelo asincrónicamente
+                const model = await Live2DModel.from(modelUrl);
+
+                // Agregar el modelo al contenedor principal de PixiJS
+                app.stage.addChild(model);
+
+                // Configurar anclaje al centro para facilitar el posicionamiento
+                model.anchor.set(0.5, 0.5);
+
+                // Función de redimensionamiento responsivo
+                const resize = () => {
+                    const scaleX = innerWidth / model.internalModel.width;
+                    const scaleY = innerHeight / model.internalModel.height;
+
+                    // Escalar preservando la relación de aspecto original
+                    model.scale.set(Math.min(scaleX, scaleY) * 0.9); // 90% del tamaño de la pantalla
+
+                    // Posicionar en el centro
+                    model.x = innerWidth / 2;
+                    model.y = innerHeight / 2;
+                };
+
+                // Llamar inicialmente y en cada resize de la ventana
+                resize();
+                window.addEventListener('resize', resize);
+
+                // Habilitar interacción para poder hacer clic
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // Animación (motion) on click/tap
+                model.on('pointertap', () => {
+                    // Si el modelo tiene grupos definidos de motions, disparar uno de forma aleatoria
+                    // Utilizar cadena vacía ("") como nombre del grupo basándonos en la estructura de xch001_01.model3.json
+                    const motionGroup = "";
+                    // Obtener conteo de motions, si existe, disparar aleatorio
+                    const motionManager = model.internalModel.motionManager;
+                    const motionGroupData = motionManager.motionGroups[motionGroup];
+
+                    if (motionGroupData && motionGroupData.length > 0) {
+                        const randomIdx = Math.floor(Math.random() * motionGroupData.length);
+                        model.motion(motionGroup, randomIdx);
+                    }
+                });
+
+                console.log("Modelo inicializado con éxito.");
+
+            } catch (error) {
+                console.error("Error al cargar el modelo Live2D:", error);
+            }
+        }
+
+        // Iniciar al cargar
+        init();
+    </script>
+</body>
+</html>
