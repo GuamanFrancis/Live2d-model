@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0+ PoC</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #2c3e50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+    <!-- Dependencies para PixiJS y Live2D SDK 4.0+ -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.10/dist/browser/pixi.min.js"></script>
+    <script>
+        // Expose PIXI globally so pixi-live2d-display can find it
+        window.PIXI = PIXI;
+    </script>
+    <!-- Cubism 4 Core SDK oficial -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- pixi-live2d-display bundle para Cubism 4 (SDK 4.0+) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <script>
+        // Configurar la ruta al modelo (Codificada para caracteres especiales/asiáticos y espacios si los hubiere en el nombre)
+        // Tomando como ejemplo la carpeta xch001_01
+        const modelPath = encodeURI("xch001_01/xch001_01.model3.json");
+
+        // Inicializar la aplicación Pixi
+        const app = new PIXI.Application({
+            width: window.innerWidth,
+            height: window.innerHeight,
+            transparent: true,
+            autoDensity: true,
+            resolution: window.devicePixelRatio || 1,
+            resizeTo: window
+        });
+        document.body.appendChild(app.view);
+
+        async function initModel() {
+            try {
+                // Cargar el modelo Live2D usando PIXI.live2d.Live2DModel.from
+                const model = await PIXI.live2d.Live2DModel.from(modelPath);
+
+                // Agregar el modelo al stage
+                app.stage.addChild(model);
+
+                // Función de redimensionado basada en el modelo interno (internalModel)
+                const resize = () => {
+                    const scaleX = window.innerWidth / model.internalModel.width;
+                    const scaleY = window.innerHeight / model.internalModel.height;
+
+                    // Escalar preservando la proporción (usando el mínimo para que encaje)
+                    const scale = Math.min(scaleX, scaleY) * 0.9; // 90% del tamaño disponible para dar margen
+
+                    model.scale.set(scale, scale);
+
+                    // Centrar usando anchor
+                    model.anchor.set(0.5, 0.5);
+                    model.x = window.innerWidth / 2;
+                    model.y = window.innerHeight / 2;
+                };
+
+                // Redimensionar inicialmente y cuando cambie la ventana
+                resize();
+                window.addEventListener('resize', resize);
+
+                // Configurar interactividad y cursor (eye/head tracking funciona por defecto)
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // Añadir evento al clic/touch (pointertap) para ejecutar una animación (motion)
+                model.on('pointertap', () => {
+                    // Ejecuta el motion por defecto o el primer motion disponible en el grupo vacío ''
+                    console.log("Activando Motion");
+                    model.motion('', 0);
+                });
+
+                console.log("Modelo Live2D cargado con éxito.");
+            } catch (error) {
+                console.error("Error al cargar el modelo Live2D:", error);
+            }
+        }
+
+        initModel();
+    </script>
+</body>
+</html>
