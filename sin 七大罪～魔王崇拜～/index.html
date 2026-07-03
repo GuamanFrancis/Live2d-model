@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D SDK 4.0+ PoC</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #333333;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+    <!-- Cubism Core para SDK 4.0+ -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- PixiJS (Versión 6.5.10 preferida para headless/WebGL compatibility) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+    <!-- Exponer PIXI de forma global -->
+    <script>
+        window.PIXI = PIXI;
+    </script>
+    <!-- pixi-live2d-display (cubism4.min.js para soportar modelos SDK 4.0+) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <script>
+        (async function main() {
+            // Inicializar la aplicación de PixiJS
+            const app = new PIXI.Application({
+                width: window.innerWidth,
+                height: window.innerHeight,
+                backgroundColor: 0x333333,
+                resolution: window.devicePixelRatio || 1,
+                autoDensity: true,
+                resizeTo: window
+            });
+            document.body.appendChild(app.view);
+
+            // Ruta del modelo (encodeURI para manejar posibles caracteres especiales)
+            const modelUrl = encodeURI("xch001_01/xch001_01.model3.json");
+
+            try {
+                // Cargar el modelo Live2D
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+                // Añadir el modelo a la escena
+                app.stage.addChild(model);
+
+                // Configurar posicionamiento y escala
+                if (model.anchor) {
+                    model.anchor.set(0.5, 0.5);
+                }
+                model.x = app.screen.width / 2;
+                model.y = app.screen.height / 2;
+
+                // Calcular escala basada en dimensiones originales para evitar distorsiones
+                const scaleX = app.screen.width / model.internalModel.width;
+                const scaleY = app.screen.height / model.internalModel.height;
+                const scale = Math.min(scaleX, scaleY) * 0.9; // 90% de la pantalla
+                model.scale.set(scale, scale);
+
+                // Ajustar al redimensionar la ventana
+                window.addEventListener('resize', () => {
+                    model.x = app.screen.width / 2;
+                    model.y = app.screen.height / 2;
+                    const newScaleX = app.screen.width / model.internalModel.width;
+                    const newScaleY = app.screen.height / model.internalModel.height;
+                    const newScale = Math.min(newScaleX, newScaleY) * 0.9;
+                    model.scale.set(newScale, newScale);
+                });
+
+                // Activar interactividad para eventos de clic/puntero (eye-tracking viene configurado por defecto)
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // Contador para alternar entre animaciones del grupo ""
+                let motionIndex = 0;
+
+                // Evento de clic para ejecutar motions
+                model.on('pointerdown', () => {
+                    // El modelo tiene un grupo vacío ""
+                    model.motion('', motionIndex);
+                    motionIndex = (motionIndex + 1) % 3; // Alterna entre touch1, idle, touch2
+                });
+
+                console.log("Modelo Live2D cargado exitosamente.");
+            } catch (error) {
+                console.error("Error al cargar el modelo:", error);
+            }
+        })();
+    </script>
+</body>
+</html>
