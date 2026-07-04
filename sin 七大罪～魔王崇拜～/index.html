@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Web Viewer - PoC</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: sans-serif;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            pointer-events: none;
+        }
+    </style>
+    <!-- PIXI JS v6 for stability with SwiftShader/WebGL -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+    <script>
+        // Ensure PIXI is exposed globally for pixi-live2d-display
+        window.PIXI = PIXI;
+    </script>
+    <!-- Cubism Core SDK for Web -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- pixi-live2d-display (Cubism 4 build) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="info">
+        <h3>Live2D Model PoC</h3>
+        <p>Modelo: xch001_01</p>
+        <p>Haz clic en el modelo para reproducir una animación.</p>
+    </div>
+    <script>
+        const { Application } = PIXI;
+        const { Live2DModel } = PIXI.live2d;
+
+        (async function main() {
+            // Inicializar la aplicación PixiJS
+            const app = new Application({
+                view: document.createElement('canvas'),
+                autoStart: true,
+                resizeTo: window,
+                backgroundColor: 0x333333
+            });
+            document.body.appendChild(app.view);
+
+            // Ruta al modelo. Nota: Usamos encodeURI para manejar caracteres especiales en la ruta si es necesario.
+            // La ruta es relativa al index.html
+            const modelUrl = 'xch001_01/xch001_01.model3.json';
+
+            try {
+                // Cargar el modelo Live2D
+                const model = await Live2DModel.from(modelUrl);
+
+                // Configurar la interacción (necesario para clics y seguimiento del cursor)
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // Añadir el modelo a la escena
+                app.stage.addChild(model);
+
+                // Función para ajustar el tamaño y posición
+                const resize = () => {
+                    // Usar las dimensiones internas del modelo (sin escalar) para calcular el factor de escala
+                    const unscaledWidth = model.internalModel.width;
+                    const unscaledHeight = model.internalModel.height;
+
+                    // Calcular la escala para que encaje en la pantalla (manteniendo proporción)
+                    const scaleX = app.renderer.width / unscaledWidth;
+                    const scaleY = app.renderer.height / unscaledHeight;
+                    // Escalar al 80% de la pantalla para dejar algo de margen
+                    const scale = Math.min(scaleX, scaleY) * 0.8;
+
+                    model.scale.set(scale);
+
+                    // Usar el ancla para centrar fácilmente
+                    model.anchor.set(0.5, 0.5);
+                    model.x = app.renderer.width / 2;
+                    model.y = app.renderer.height / 2;
+                };
+
+                // Llamar inicialmente y al redimensionar la ventana
+                resize();
+                window.addEventListener('resize', resize);
+
+                // Configurar evento de clic para disparar animaciones ("motions")
+                let motionIndex = 0;
+                model.on('pointerup', () => {
+                    // Intentar reproducir una animación del grupo "" (el grupo raíz en este modelo)
+                    // Las motions del modelo son "touch1", "idle", "touch2"
+                    console.log('Reproduciendo animación índice:', motionIndex);
+                    model.motion('', motionIndex);
+
+                    // Alternar entre las animaciones disponibles (hay 3 en total)
+                    motionIndex = (motionIndex + 1) % 3;
+                });
+
+                console.log("Modelo Live2D cargado correctamente.");
+
+            } catch (error) {
+                console.error("Error al cargar el modelo Live2D:", error);
+            }
+        })();
+    </script>
+</body>
+</html>
