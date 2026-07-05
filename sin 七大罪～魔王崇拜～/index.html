@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D PoC - SDK 4.0+</title>
+    <!-- 1. Load PixiJS (v6) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- 2. Load Cubism Core (Official URL) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- 3. Load pixi-live2d-display (Cubism 4 build, no beta tags) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #333;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Ensure PIXI is exposed globally for pixi-live2d-display
+        window.PIXI = PIXI;
+
+        const app = new PIXI.Application({
+            view: document.createElement('canvas'),
+            autoDensity: true,
+            resizeTo: window,
+            backgroundColor: 0x333333
+        });
+        document.body.appendChild(app.view);
+
+        async function init() {
+            // Path to the .model3.json file, properly encoded
+            const modelUrl = encodeURI("xch001_01/xch001_01.model3.json");
+
+            try {
+                // Asynchronously load the model
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+
+                // Set interactive properties for pointer tracking and clicking
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // Center the model's anchor point
+                model.anchor.set(0.5, 0.5);
+
+                // Position in the middle of the screen
+                model.position.set(window.innerWidth / 2, window.innerHeight / 2);
+
+                // Calculate scale to fit the window, using unscaled dimensions
+                const scaleX = window.innerWidth / model.internalModel.width;
+                const scaleY = window.innerHeight / model.internalModel.height;
+                const scale = Math.min(scaleX, scaleY) * 0.9; // 90% of screen
+                model.scale.set(scale, scale);
+
+                // Re-center and re-scale on window resize
+                window.addEventListener('resize', () => {
+                    model.position.set(window.innerWidth / 2, window.innerHeight / 2);
+                    const newScaleX = window.innerWidth / model.internalModel.width;
+                    const newScaleY = window.innerHeight / model.internalModel.height;
+                    const newScale = Math.min(newScaleX, newScaleY) * 0.9;
+                    model.scale.set(newScale, newScale);
+                });
+
+                // Set up interaction to play random motions on click
+                model.on('pointertap', () => {
+                    // Check if motions are available in the default empty group ""
+                    if (model.internalModel.motionManager.motionGroups[""]) {
+                       const motionsCount = model.internalModel.motionManager.motionGroups[""].length;
+                       if (motionsCount > 0) {
+                           // Pick a random motion index
+                           const randomIndex = Math.floor(Math.random() * motionsCount);
+                           // Play the motion from the empty string group ""
+                           model.motion('', randomIndex);
+                           console.log(`Playing motion index: ${randomIndex}`);
+                       }
+                    }
+                });
+
+                // Add the loaded model to the Pixi application stage
+                app.stage.addChild(model);
+                console.log("Model loaded successfully!");
+
+            } catch (error) {
+                console.error("Error loading the Live2D model:", error);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
