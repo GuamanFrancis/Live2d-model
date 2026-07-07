@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D WebGL PoC - PixiJS + Cubism SDK 4.0+</title>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #2c3e50; }
+        canvas { display: block; }
+    </style>
+    <!-- PixiJS 6.x (Preferido para compatibilidad WebGL en SwiftShader headless) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- Live2D Cubism Core (Para modelos SDK 4.0+) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- pixi-live2d-display (Bundle cubism4.min.js para SDK 4.0+) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <script>
+        // Exponer PIXI de forma global, requerido por pixi-live2d-display
+        window.PIXI = PIXI;
+
+        // Configuración de la aplicación PixiJS
+        const app = new PIXI.Application({
+            view: document.createElement('canvas'),
+            autoStart: true,
+            resizeTo: window,
+            backgroundColor: 0x2c3e50
+        });
+        document.body.appendChild(app.view);
+
+        // Instanciar el modelo (Cubism 4+)
+        const { Live2DModel } = PIXI.live2d;
+
+        async function init() {
+            try {
+                console.log("Cargando modelo...");
+
+                // Cargar el modelo desde el archivo JSON
+                // Importante: URL encodificada por si existen caracteres especiales, aunque aquí no los hay en el nombre del fichero.
+                const model = await Live2DModel.from(encodeURI('xch001_01/xch001_01.model3.json'));
+
+                // Añadir el modelo a la escena
+                app.stage.addChild(model);
+
+                // Configurar anclaje y posición (centrar en la pantalla)
+                model.anchor.set(0.5, 0.5);
+                model.x = app.screen.width / 2;
+                model.y = app.screen.height / 2;
+
+                // Escalar el modelo basándose en sus dimensiones internas
+                const scaleX = (app.screen.width * 0.8) / model.internalModel.width;
+                const scaleY = (app.screen.height * 0.8) / model.internalModel.height;
+                model.scale.set(Math.min(scaleX, scaleY));
+
+                // Manejo de redimensionamiento de ventana
+                window.addEventListener('resize', () => {
+                    model.x = app.screen.width / 2;
+                    model.y = app.screen.height / 2;
+                    const newScaleX = (app.screen.width * 0.8) / model.internalModel.width;
+                    const newScaleY = (app.screen.height * 0.8) / model.internalModel.height;
+                    model.scale.set(Math.min(newScaleX, newScaleY));
+                });
+
+                // Habilitar interacción para el modelo
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // Implementación de Motions al hacer click
+                model.on('pointerdown', (e) => {
+                    console.log("Interacción detectada. Disparando animación aleatoria.");
+                    // Iniciar una animación aleatoria del grupo por defecto ('') si está definido
+                    // Nota: xch001_01 tiene grupo "" en el model3.json
+                    model.motion('', Math.floor(Math.random() * 3)); // Hay 3 animaciones: touch1, idle, touch2
+                });
+
+                // Implementación de seguimiento de cursor (Look at)
+                // El seguimiento del ratón es manejado automáticamente por pixi-live2d-display
+
+                console.log("Modelo cargado exitosamente.");
+            } catch (error) {
+                console.error("Error al cargar el modelo:", error);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
