@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D Model PoC</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            display: block;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: sans-serif;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            pointer-events: none;
+        }
+    </style>
+
+    <!-- 1. Cubism Core (Necesario para SDK 4.0+) -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+
+    <!-- 2. PixiJS (Versión 6.5.10 recomendada para máxima compatibilidad) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.min.js"></script>
+
+    <!-- 3. Pixi-Live2D-Display (Bundle para Cubism 4) -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
+</head>
+<body>
+    <div id="info">Cargando modelo... Haz clic en el personaje para interactuar.</div>
+
+    <script>
+        // Exponer PIXI globalmente para que pixi-live2d-display pueda usarlo
+        window.PIXI = PIXI;
+
+        async function init() {
+            // Inicializar la aplicación Pixi
+            const app = new PIXI.Application({
+                width: window.innerWidth,
+                height: window.innerHeight,
+                autoStart: true,
+                transparent: true,
+                resolution: window.devicePixelRatio || 1
+            });
+            document.body.appendChild(app.view);
+
+            // Ajustar el canvas si se redimensiona la ventana
+            window.addEventListener('resize', () => {
+                app.renderer.resize(window.innerWidth, window.innerHeight);
+                if (window.currentModel) {
+                    window.currentModel.x = window.innerWidth / 2;
+                    window.currentModel.y = window.innerHeight / 2;
+                    // Escalar basándose en el ancho interno para evitar distorsiones
+                    const scale = Math.min(window.innerWidth / window.currentModel.internalModel.width, window.innerHeight / window.currentModel.internalModel.height) * 0.9;
+                    window.currentModel.scale.set(scale);
+                }
+            });
+
+            // Codificar la ruta del modelo para manejar caracteres especiales
+            const modelUrl = encodeURI("xch001_01/xch001_01.model3.json");
+
+            try {
+                // Cargar el modelo Live2D
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+                window.currentModel = model;
+
+                // Añadir el modelo a la escena
+                app.stage.addChild(model);
+
+                // Configurar anclaje para centrar fácilmente
+                model.anchor.set(0.5, 0.5);
+
+                // Posicionar en el centro de la pantalla
+                model.x = window.innerWidth / 2;
+                model.y = window.innerHeight / 2;
+
+                // Calcular la escala inicial para que el modelo se ajuste a la pantalla
+                const scale = Math.min(window.innerWidth / model.internalModel.width, window.innerHeight / model.internalModel.height) * 0.9;
+                model.scale.set(scale);
+
+                // Habilitar interacciones
+                model.interactive = true;
+                model.buttonMode = true;
+
+                // El seguimiento del cursor (eye/head tracking) funciona out-of-the-box.
+                // Evento para ejecutar animaciones "motions" al hacer clic
+                model.on('pointerdown', () => {
+                    // Seleccionar un índice de animación aleatorio del grupo "" (vacío en este json)
+                    // Según el JSON, hay 3 animaciones (0, 1, 2)
+                    const motionIndex = Math.floor(Math.random() * 3);
+                    model.motion('', motionIndex);
+                });
+
+                document.getElementById('info').innerText = "Modelo cargado. Seguimiento de cursor activo. Haz clic para ejecutar animación.";
+                console.log("Live2D model loaded successfully.");
+            } catch (error) {
+                console.error("Error loading model:", error);
+                document.getElementById('info').innerText = "Error cargando el modelo.";
+            }
+        }
+
+        // Iniciar cuando el DOM esté listo
+        document.addEventListener("DOMContentLoaded", init);
+    </script>
+</body>
+</html>
